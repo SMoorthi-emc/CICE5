@@ -315,6 +315,8 @@
          do while (nml_error > 0)
             print*,'Reading setup_nml'
                read(nu_nml, nml=setup_nml,iostat=nml_error)
+      write(0,*)' setup_nml history_dir=',trim(history_dir)
+      write(0,*)' setup_nml restart_dir=',trim(restart_dir)
                if (nml_error /= 0) exit
             print*,'Reading grid_nml'
                read(nu_nml, nml=grid_nml,iostat=nml_error)

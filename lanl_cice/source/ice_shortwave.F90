@@ -1357,7 +1357,7 @@
             fpn = c0
             hpn = c0
          endif
-         
+
          call shortwave_dEdd(nx_block,          ny_block,       &
                              ntrcr,             icells,         &
                              indxi,             indxj,          &
@@ -1556,6 +1556,7 @@
          avdfl   , & ! visible, diffuse, albedo (fraction) 
          aidrl   , & ! near-ir, direct, albedo (fraction) 
          aidfl       ! near-ir, diffuse, albedo (fraction) 
+      real (kind=dbl_kind) :: tem
 
 !-----------------------------------------------------------------------
 
@@ -1581,18 +1582,20 @@
          fswthruidr(i,j)  = c0
          fswthruidf(i,j)  = c0
       ! compute fraction of nir down direct to total over all points:
-         fnidr(i,j) = c0
-         if( swidr(i,j) + swidf(i,j) > puny ) then
-            fnidr(i,j) = swidr(i,j)/(swidr(i,j)+swidf(i,j))
+         tem = swidr(i,j) + swidf(i,j)
+         if (tem > puny) then
+           fnidr(i,j) = max(c0, min(swidr(i,j)/tem, 1.0))
+         else
+           fnidr(i,j) = c0
          endif
-         albice(i,j)    = c0
-         albsno(i,j)    = c0
-         albpnd(i,j)    = c0
+         albice(i,j)  = c0
+         albsno(i,j)  = c0
+         albpnd(i,j)  = c0
       enddo
       enddo
       fswpenl(:,:,:) = c0
-      Sswabs(:,:,:) = c0
-      Iswabs(:,:,:) = c0
+      Sswabs(:,:,:)  = c0
+      Iswabs(:,:,:)  = c0
 
       ! compute aerosol mass path
 

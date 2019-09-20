@@ -22,7 +22,8 @@
          rhos      = 330.0_dbl_kind   ,&! density of snow (kg/m^3)
          rhoi      = 917.0_dbl_kind   ,&! density of ice (kg/m^3)
          rhow      = 1026.0_dbl_kind  ,&! density of seawater (kg/m^3)
-         cp_air    = 1005.0_dbl_kind  ,&! specific heat of air (J/kg/K)
+!        cp_air    = 1005.0_dbl_kind  ,&! specific heat of air (J/kg/K)
+         cp_air    = 1004.6_dbl_kind  ,&! specific heat of air (J/kg/K) ! Moorthi
          ! (Briegleb JGR 97 11475-11485  July 1992)
          emissivity= 0.95_dbl_kind    ,&! emissivity of snow and ice
          cp_ice    = 2106._dbl_kind   ,&! specific heat of fresh ice (J/kg/K)
@@ -33,9 +34,12 @@
          albocn    = 0.06_dbl_kind      ! ocean albedo
 
       real (kind=dbl_kind), parameter, public :: &
-         gravit    = 9.80616_dbl_kind    ,&! gravitational acceleration (m/s^2)
-         omega     = 7.292e-5_dbl_kind   ,&! angular velocity of earth (rad/sec)
-         radius    = 6.37e6_dbl_kind       ! earth radius (m)
+!        gravit    = 9.80616_dbl_kind    ,&! gravitational acceleration (m/s^2)
+         gravit    = 9.80665_dbl_kind    ,&! gravitational acceleration (m/s^2) ! Moorthi
+!        omega     = 7.292e-5_dbl_kind   ,&! angular velocity of earth (rad/sec)
+         omega     = 7.2921e-5_dbl_kind  ,&! angular velocity of earth (rad/sec)! Moorthi
+!        radius    = 6.37e6_dbl_kind       ! earth radius (m)
+         radius    = 6.3712e6_dbl_kind     ! earth radius (m) ! Moorthi
 
       real (kind=dbl_kind), parameter, public :: &
          secday    = 86400.0_dbl_kind ,&! seconds in calendar day
@@ -46,7 +50,8 @@
          zvir      = 0.606_dbl_kind   ,&! rh2o/rair - 1.0
          vonkar    = 0.4_dbl_kind     ,&! von Karman constant
          cp_wv     = 1.81e3_dbl_kind  ,&! specific heat of water vapor (J/kg/K)
-         stefan_boltzmann = 567.0e-10_dbl_kind,&!  W/m^2/K^4
+!        stefan_boltzmann = 567.0e-10_dbl_kind,&!  W/m^2/K^4
+         stefan_boltzmann = 567.4e-10_dbl_kind,&!  W/m^2/K^4     !  Moorthi
          Tffresh   = 273.15_dbl_kind  ,&! freezing temp of fresh ice (K)
          Lsub      = 2.835e6_dbl_kind ,&! latent heat, sublimation freshwater (J/kg)
          Lvap      = 2.501e6_dbl_kind ,&! latent heat, vaporization freshwater (J/kg)
@@ -68,14 +73,14 @@
          !kappan = 17.6_dbl_kind,&! vis extnctn coef in ice, wvlngth<700nm (1/m)
 
          ! kice is not used for mushy thermo
-         kice   = 2.03_dbl_kind  ,&! thermal conductivity of fresh ice(W/m/deg)
+         kice      = 2.03_dbl_kind  ,&! thermal conductivity of fresh ice(W/m/deg)
          ! kseaice is used only for zero-layer thermo
-         kseaice= 2.00_dbl_kind  ,&! thermal conductivity of sea ice (W/m/deg)
-                                   ! (used in zero layer thermodynamics option)
-         ksno   = 0.30_dbl_kind  ,&! thermal conductivity of snow  (W/m/deg)
-         zref   = 10._dbl_kind   ,&! reference height for stability (m)
-         hs_min = 1.e-4_dbl_kind ,&! min snow thickness for computing zTsn (m)
-         snowpatch = 0.02_dbl_kind ! parameter for fractional snow area (m)
+         kseaice   = 2.00_dbl_kind  ,&! thermal conductivity of sea ice (W/m/deg)
+                                      ! (used in zero layer thermodynamics option)
+         ksno      = 0.30_dbl_kind  ,&! thermal conductivity of snow  (W/m/deg)
+         zref      = 10._dbl_kind   ,&! reference height for stability (m)
+         hs_min    = 1.e-4_dbl_kind ,&! min snow thickness for computing zTsn (m)
+         snowpatch = 0.02_dbl_kind    ! parameter for fractional snow area (m)
                     
       ! weights for albedos 
       ! 4 Jan 2007 BPB  Following are appropriate for complete cloud
