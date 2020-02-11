@@ -52,7 +52,7 @@
       use ice_domain, only: nblocks
       use ice_domain_size, only: nilyr, nslyr, ncat, max_blocks
       use ice_fileunits, only: nu_diag, nu_rst_pointer, nu_dump
-      use ice_flux, only: scale_factor, swvdr, swvdf, swidr, swidf, &
+      use ice_flux, only: coszen, scale_factor, swvdr, swvdf, swidr, swidf, &
           strocnxT, strocnyT, sst, frzmlt, iceumask, &
           stressp_1, stressp_2, stressp_3, stressp_4, &
           stressm_1, stressm_2, stressm_3, stressm_4, &
@@ -125,6 +125,7 @@
       !-----------------------------------------------------------------
       ! radiation fields
       !-----------------------------------------------------------------
+      call write_restart_field(nu_dump,0,coszen,'ruf8','coszen',1,diag)
       call write_restart_field(nu_dump,0,scale_factor,'ruf8','scale_factor',1,diag)
 
       call write_restart_field(nu_dump,0,swvdr,'ruf8','swvdr',1,diag)
@@ -199,7 +200,7 @@
       use ice_domain_size, only: nilyr, nslyr, ncat, nx_global, ny_global, &
           max_ntrcr, max_blocks
       use ice_fileunits, only: nu_diag, nu_rst_pointer, nu_restart
-      use ice_flux, only: scale_factor, swvdr, swvdf, swidr, swidf, &
+      use ice_flux, only: coszen,scale_factor, swvdr, swvdf, swidr, swidf, &
           strocnxT, strocnyT, sst, frzmlt, iceumask, &
           stressp_1, stressp_2, stressp_3, stressp_4, &
           stressm_1, stressm_2, stressm_3, stressm_4, &
@@ -327,6 +328,8 @@
       if (my_task == master_task) &
          write(nu_diag,*) 'radiation fields'
 
+      call read_restart_field(nu_restart,0,coszen,'ruf8', &
+           'coszen',1,diag, field_loc_center, field_type_scalar)
       call read_restart_field(nu_restart,0,scale_factor,'ruf8', &
            'scale_factor',1,diag, field_loc_center, field_type_scalar)
       call read_restart_field(nu_restart,0,swvdr,'ruf8', &
@@ -385,7 +388,8 @@
       call read_restart_field(nu_restart,0,stress12_4,'ruf8', &
            'stress12_4',1,diag,field_loc_center,field_type_scalar) ! stress12_4
 
-      if (trim(grid_type) == 'tripole' .and. trim(restart_format) == 'pio') then
+      if (trim(grid_type) == 'tripole' .and. (trim(restart_format) == 'pio' .or. &
+                                              trim(restart_format) == 'nc') ) then
 
       call ice_HaloUpdate_stress(stressp_1, stressp_3, halo_info, &
                                  field_loc_center,  field_type_scalar)
@@ -577,16 +581,16 @@
       use ice_calendar, only: istep0, istep1, time, time_forc, calendar, npt
       use ice_communicate, only: my_task, master_task
       use ice_constants, only: c0, p5, &
-          field_loc_center, field_loc_NEcorner, &
+          field_loc_center,  field_loc_NEcorner, &
           field_type_scalar, field_type_vector
       use ice_domain, only: nblocks, distrb_info
       use ice_domain_size, only: nilyr, nslyr, ncat, nx_global, ny_global, &
           max_ntrcr, max_blocks
       use ice_fileunits, only: nu_diag, nu_rst_pointer, nu_restart
-      use ice_flux, only: scale_factor, swvdr, swvdf, swidr, swidf, &
-          strocnxT, strocnyT, sst, frzmlt, iceumask, &
-          stressp_1, stressp_2, stressp_3, stressp_4, &
-          stressm_1, stressm_2, stressm_3, stressm_4, &
+      use ice_flux, only: coszen, scale_factor, swvdr, swvdf, swidr, swidf,&
+          strocnxT,   strocnyT,   sst,  frzmlt, iceumask, &
+          stressp_1,  stressp_2,  stressp_3, stressp_4,   &
+          stressm_1,  stressm_2,  stressm_3, stressm_4,   &
           stress12_1, stress12_2, stress12_3, stress12_4
       use ice_gather_scatter, only: scatter_global_stress
       use ice_grid, only: tmask
@@ -715,6 +719,8 @@
       if (my_task == master_task) &
          write(nu_diag,*) 'radiation fields'
 
+      call ice_read(nu_restart,0,coszen,'ruf8',diag, &
+                    field_loc_center, field_type_scalar)
       call ice_read(nu_restart,0,scale_factor,'ruf8',diag, &
                     field_loc_center, field_type_scalar)
       call ice_read(nu_restart,0,swvdr,'ruf8',diag, &
