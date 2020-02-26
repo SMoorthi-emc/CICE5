@@ -677,7 +677,6 @@
                       l_stop,                &
                       istop,    jstop)
 
-
       ! maintain qsno negative definiteness
       do n = 1, ncat
          do k = nt_qsno, nt_qsno+nslyr-1
