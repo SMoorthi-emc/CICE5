@@ -338,7 +338,7 @@
       ! (Ice speeds of ~1 m/s or more usually indicate instability)
 
       if (check_umax) then
-      	 if (umaxn > umax_stab) then
+         if (umaxn > umax_stab) then
 !           !$OMP PARALLEL DO PRIVATE(iblk,i,j)
             do iblk = 1, nblocks
             do j = 1, ny_block
