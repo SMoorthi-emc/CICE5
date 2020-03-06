@@ -902,6 +902,7 @@ module cice_cap_mod
     real(ESMF_KIND_R8), pointer :: dataPtr_vice(:,:,:)
     real(ESMF_KIND_R8), pointer :: dataPtr_vsno(:,:,:)
 #endif
+    character(240)              :: import_timestr, export_timestr
     character(240)              :: msgString
     character(len=*),parameter  :: subname='(cice_cap:ModelAdvance_slow)'
 
@@ -958,8 +959,10 @@ module cice_cap_mod
       file=__FILE__)) &
       return  ! bail out
 
+    call ESMF_TimeGet(currTime,          timestring=import_timestr, rc=rc)
+    call ESMF_TimeGet(currTime+timestep, timestring=export_timestr, rc=rc)
+
   if(write_diagnostics) then
-    import_slice = import_slice + 1
 
     call state_diagnose(importState, 'cice_import', rc)
     do i = 1,fldsToice_num
@@ -976,8 +979,8 @@ module cice_cap_mod
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
 #ifdef CMEPS
-        call ESMF_FieldWrite(lfield, fileName='field_ice_import_'//trim(fldname)//'.nc', &
-          timeslice=import_slice, overwrite=overwrite_timeslice, rc=rc)
+        call ESMF_FieldWrite(lfield, fileName='field_ice_import_'//trim(import_timestr)//'.nc', &
+          timeslice=1, overwrite=overwrite_timeslice, rc=rc)
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, &
           line=__LINE__, &
           file=__FILE__)) &
@@ -998,8 +1001,8 @@ module cice_cap_mod
 
         fldptr2d(:,:) = fldptr(:,:,1)
 
-        call ESMF_FieldWrite(lfield2d, fileName='field_ice_import_'//trim(fldname)//'.nc', &
-          timeslice=import_slice, overwrite=overwrite_timeslice, rc=rc) 
+        call ESMF_FieldWrite(lfield2d, fileName='field_ice_import_'//trim(import_timestr)//'.nc', &
+          timeslice=1, overwrite=overwrite_timeslice, rc=rc) 
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, &
           line=__LINE__, &
           file=__FILE__)) &
@@ -1312,8 +1315,6 @@ module cice_cap_mod
   if(write_diagnostics) then
     call state_diagnose(exportState, 'cice_export', rc)
 
-    export_slice = export_slice + 1
-
     do i = 1,fldsFrIce_num
       fldname = fldsFrIce(i)%shortname
       call ESMF_StateGet(exportState, itemName=trim(fldname), itemType=itemType, rc=rc)
@@ -1328,8 +1329,8 @@ module cice_cap_mod
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
 #ifdef CMEPS
-        call ESMF_FieldWrite(lfield, fileName='field_ice_export_'//trim(fldname)//'.nc', &
-          timeslice=export_slice, overwrite=overwrite_timeslice, rc=rc)
+        call ESMF_FieldWrite(lfield, fileName='field_ice_export_'//trim(export_timestr)//'.nc', &
+          timeslice=1, overwrite=overwrite_timeslice, rc=rc)
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, &
           line=__LINE__, &
           file=__FILE__)) &
@@ -1350,8 +1351,8 @@ module cice_cap_mod
 
         fldptr2d(:,:) = fldptr(:,:,1)
 
-        call ESMF_FieldWrite(lfield2d, fileName='field_ice_export_'//trim(fldname)//'.nc', &
-          timeslice=export_slice, overwrite=overwrite_timeslice,rc=rc) 
+        call ESMF_FieldWrite(lfield2d, fileName='field_ice_export_'//trim(export_timestr)//'.nc', &
+          timeslice=1, overwrite=overwrite_timeslice,rc=rc) 
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, &
           line=__LINE__, &
           file=__FILE__)) &
@@ -1372,24 +1373,26 @@ module cice_cap_mod
 ! Dump out all the cice internal fields to cross-examine with those connected with mediator
 ! This will help to determine roughly which fields can be hooked into cice
 
-   call dumpCICEInternal(ice_grid_i, import_slice, "inst_zonal_wind_height10m", "will provide", strax)
-   call dumpCICEInternal(ice_grid_i, import_slice, "inst_merid_wind_height10m", "will provide", stray)
-   call dumpCICEInternal(ice_grid_i, import_slice, "inst_pres_height_surface" , "will provide", zlvl)
-   call dumpCICEInternal(ice_grid_i, import_slice, "ocn_current_zonal", "will provide", uocn)
-   call dumpCICEInternal(ice_grid_i, import_slice, "ocn_current_merid", "will provide", vocn)
-   call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_slope_zonal", "will provide", ss_tltx)
-   call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_slope_merid", "will provide", ss_tlty)
-   call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_salinity", "will provide", sss)
-   call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_temperature", "will provide", sst)
+   !import_slice = import_slice + 1
+   !call dumpCICEInternal(ice_grid_i, import_slice, "inst_zonal_wind_height10m", "will provide", strax)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "inst_merid_wind_height10m", "will provide", stray)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "inst_pres_height_surface" , "will provide", zlvl)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "ocn_current_zonal", "will provide", uocn)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "ocn_current_merid", "will provide", vocn)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_slope_zonal", "will provide", ss_tltx)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_slope_merid", "will provide", ss_tlty)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_salinity", "will provide", sss)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_temperature", "will provide", sst)
 
 !--------- export fields from Sea Ice -------------
 
-   call dumpCICEInternal(ice_grid_i, export_slice, "ice_fraction"                    , "will provide", aice)
-   call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_air_ice_zonal"         , "will provide", strairxT)
-   call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_air_ice_merid"         , "will provide", strairyT)
-   call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_ocn_ice_zonal"         , "will provide", strocnxT)
-   call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_ocn_ice_merid"         , "will provide", strocnyT)
-   call dumpCICEInternal(ice_grid_i, export_slice, "mean_sw_pen_to_ocn"              , "will provide", fswthru)
+   !export_slice = export_slice + 1
+   !call dumpCICEInternal(ice_grid_i, export_slice, "ice_fraction"                    , "will provide", aice)
+   !call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_air_ice_zonal"         , "will provide", strairxT)
+   !call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_air_ice_merid"         , "will provide", strairyT)
+   !call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_ocn_ice_zonal"         , "will provide", strocnxT)
+   !call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_ocn_ice_merid"         , "will provide", strocnyT)
+   !call dumpCICEInternal(ice_grid_i, export_slice, "mean_sw_pen_to_ocn"              , "will provide", fswthru)
    if(profile_memory) call ESMF_VMLogMemInfo("Leaving CICE Model_ADVANCE: ")
 
   end subroutine ModelAdvance_slow 
