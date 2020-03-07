@@ -1003,7 +1003,7 @@ module cice_cap_mod
 
         fldptr2d(:,:) = fldptr(:,:,1)
 
-        call ESMF_FieldWrite(lfield, fileName=trim(fname), &
+        call ESMF_FieldWrite(lfield2d, fileName=trim(fname), &
           timeslice=1, overwrite=overwrite_timeslice, rc=rc) 
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, &
           line=__LINE__, &
@@ -1354,7 +1354,7 @@ module cice_cap_mod
 
         fldptr2d(:,:) = fldptr(:,:,1)
 
-        call ESMF_FieldWrite(lfield, fileName=trim(fname), &
+        call ESMF_FieldWrite(lfield2d, fileName=trim(fname), &
           timeslice=1, overwrite=overwrite_timeslice,rc=rc) 
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, &
           line=__LINE__, &
