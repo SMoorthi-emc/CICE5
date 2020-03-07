@@ -903,6 +903,7 @@ module cice_cap_mod
     real(ESMF_KIND_R8), pointer :: dataPtr_vsno(:,:,:)
 #endif
     character(240)              :: import_timestr, export_timestr
+    character(240)              :: fname
     character(240)              :: msgString
     character(len=*),parameter  :: subname='(cice_cap:ModelAdvance_slow)'
 
@@ -963,8 +964,9 @@ module cice_cap_mod
     call ESMF_TimeGet(currTime+timestep, timestring=export_timestr, rc=rc)
 
   if(write_diagnostics) then
-
     call state_diagnose(importState, 'cice_import', rc)
+
+    fname = 'field_ice_import_'//trim(import_timestr)//'.nc'
     do i = 1,fldsToice_num
       fldname = fldsToice(i)%shortname
       call ESMF_StateGet(importState, itemName=trim(fldname), itemType=itemType, rc=rc)
@@ -979,7 +981,7 @@ module cice_cap_mod
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
 #ifdef CMEPS
-        call ESMF_FieldWrite(lfield, fileName='field_ice_import_'//trim(import_timestr)//'.nc', &
+        call ESMF_FieldWrite(lfield, fileName=trim(fname), &
           timeslice=1, overwrite=overwrite_timeslice, rc=rc)
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, &
           line=__LINE__, &
@@ -1001,7 +1003,7 @@ module cice_cap_mod
 
         fldptr2d(:,:) = fldptr(:,:,1)
 
-        call ESMF_FieldWrite(lfield2d, fileName='field_ice_import_'//trim(import_timestr)//'.nc', &
+        call ESMF_FieldWrite(lfield, fileName=trim(fname), &
           timeslice=1, overwrite=overwrite_timeslice, rc=rc) 
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, &
           line=__LINE__, &
@@ -1315,6 +1317,7 @@ module cice_cap_mod
   if(write_diagnostics) then
     call state_diagnose(exportState, 'cice_export', rc)
 
+    fname = 'field_ice_export_'//trim(export_timestr)//'.nc'
     do i = 1,fldsFrIce_num
       fldname = fldsFrIce(i)%shortname
       call ESMF_StateGet(exportState, itemName=trim(fldname), itemType=itemType, rc=rc)
@@ -1329,7 +1332,7 @@ module cice_cap_mod
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
 #ifdef CMEPS
-        call ESMF_FieldWrite(lfield, fileName='field_ice_export_'//trim(export_timestr)//'.nc', &
+        call ESMF_FieldWrite(lfield, fileName=trim(fname), &
           timeslice=1, overwrite=overwrite_timeslice, rc=rc)
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, &
           line=__LINE__, &
@@ -1351,7 +1354,7 @@ module cice_cap_mod
 
         fldptr2d(:,:) = fldptr(:,:,1)
 
-        call ESMF_FieldWrite(lfield2d, fileName='field_ice_export_'//trim(export_timestr)//'.nc', &
+        call ESMF_FieldWrite(lfield, fileName=trim(fname), &
           timeslice=1, overwrite=overwrite_timeslice,rc=rc) 
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, &
           line=__LINE__, &
