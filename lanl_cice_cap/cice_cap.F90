@@ -183,18 +183,18 @@ module cice_cap_mod
      write(msgString,'(a12,i8)')'CICE lpet = ',lpet
      call ESMF_LogWrite(trim(msgString), ESMF_LOGMSG_INFO)
 
-    call ESMF_AttributeGet(gcomp, name="DumpFields", value=value, defaultValue="true", &
+    call ESMF_AttributeGet(gcomp, name="DumpFields_ICE", value=value, defaultValue="true", &
                            convention="NUOPC", purpose="Instance", rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
-    write_diagnostics=(trim(value)=="true")
+    write_diagnostics = (trim(value) == "true")
     write(msgString,'(A,l6)')'CICE_CAP: Dumpfields = ',write_diagnostics
     call ESMF_LogWrite(trim(msgString), ESMF_LOGMSG_INFO, rc=rc)
 
-    call ESMF_AttributeGet(gcomp, name="OverwriteSlice", value=value, defaultValue="true", &
+    call ESMF_AttributeGet(gcomp, name="OverwriteSlice_ICE", value=value, defaultValue="true", &
                            convention="NUOPC", purpose="Instance", rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-                           overwrite_timeslice=(trim(value)/="false")
+    overwrite_timeslice = (trim(value) /= "false")
     write(msgString,'(A,l6)')'CICE_CAP: OverwriteSlice = ',overwrite_timeslice
     call ESMF_LogWrite(trim(msgString), ESMF_LOGMSG_INFO, rc=rc)
 
@@ -210,7 +210,7 @@ module cice_cap_mod
                           convention="NUOPC", purpose="Instance", rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
-    grid_attach_area = (trim(value)=="true")
+    grid_attach_area = (trim(value) == "true")
     write(msgString,'(A,l6)')'CICE_CAP: GridAttachArea = ',grid_attach_area
     call ESMF_LogWrite(trim(msgString), ESMF_LOGMSG_INFO, rc=rc)
 

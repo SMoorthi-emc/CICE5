@@ -91,14 +91,14 @@ if ($RES == 'mx025') then   # for column configuration:
 #  setenv BLCKX    24        # x-dimension of blocks ( not including )
 #  setenv NTASK     36       # total number of processors
 #  setenv BLCKX     80       # x-dimension of blocks ( not including )
-   setenv NTASK     24       # total number of processors
-   setenv BLCKX    120       # x-dimension of blocks ( not including )
+#  setenv NTASK     24       # total number of processors
+#  setenv BLCKX    120       # x-dimension of blocks ( not including )
 #  setenv NTASK     18       # total number of processors
 #  setenv BLCKX    160       # x-dimension of blocks ( not including )
 # below used in benchmark2
 #------------------------
-#  setenv NTASK     48       # total number of processors
-#  setenv BLCKX     60       # x-dimension of blocks ( not including )
+   setenv NTASK     48       # total number of processors
+   setenv BLCKX     60       # x-dimension of blocks ( not including )
 
    setenv BLCKY    540       # y-dimension of blocks (  ghost cells  )
    setenv NICELYR    7       # number of vertical layers in the ice
