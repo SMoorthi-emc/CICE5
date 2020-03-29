@@ -26,7 +26,7 @@ module cice_cap_mod
   use ice_domain_size, only: max_blocks, nx_global, ny_global
   use ice_domain, only: nblocks, blocks_ice, halo_info, distrb_info
   use ice_distribution, only: ice_distributiongetblockloc
-  use ice_constants, only: Tffresh, rad_to_deg
+  use ice_constants, only: c0, Tffresh, rad_to_deg, depressT
   use ice_calendar,  only: dt
   use ice_flux
   use ice_grid, only: TLAT, TLON, ULAT, ULON, hm, tarea, ANGLET, ANGLE, &
@@ -1063,6 +1063,7 @@ module cice_cap_mod
     call State_getFldPtr(importState,'air_density_height_lowest',dataPtr_rhoabot,rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
 
+       potT = 0.0_ESMF_KIND_R8
     do iblk = 1,nblocks
        this_block = get_block(blocks_ice(iblk),iblk)
        ilo = this_block%ilo
@@ -1077,8 +1078,8 @@ module cice_cap_mod
           j1 = j - jlo + 1
 #ifdef CMEPS
           rhoa   (i,j,iblk) = dataPtr_rhoabot(i1,j1)  ! import directly from mediator  
-          if(dataPtr_pbot(i1,j1) .gt. 0.0) &
-          potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1) * (100000./dataPtr_pbot(i1,j1))**0.286 ! Potential temperature (K)
+          if(dataPtr_pbot(i1,j1) .gt. 0.0_ESMF_KIND_R8) &
+          potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1) * (100000._ESMF_KIND_R8/dataPtr_pbot(i1,j1))**0.286_ESMF_KIND_R8 ! Potential temperature (K)
           Tair   (i,j,iblk) = dataPtr_Tbot   (i1,j1)  ! near surface temp, maybe lowest level (K)
           Qa     (i,j,iblk) = dataPtr_qbot   (i1,j1)  ! near surface humidity, maybe lowest level (kg/kg)
           zlvl   (i,j,iblk) = dataPtr_zlvl   (i1,j1)  ! height of the lowest level (m) 
@@ -1091,7 +1092,7 @@ module cice_cap_mod
           frain  (i,j,iblk) = dataPtr_lprec  (i1,j1)  ! flux of rain (liquid only)
           fsnow  (i,j,iblk) = dataPtr_fprec  (i1,j1)  ! flux of frozen precip
           sss    (i,j,iblk) = dataPtr_sss    (i1,j1)  ! sea surface salinity (maybe for mushy layer)
-          sst    (i,j,iblk) = dataPtr_sst    (i1,j1) - 273.15  ! sea surface temp (may not be needed?)
+          sst    (i,j,iblk) = dataPtr_sst    (i1,j1) - Tffresh  ! sea surface temp (may not be needed?)
           frzmlt (i,j,iblk) = dataPtr_fmpot  (i1,j1)
 !          ! --- rotate these vectors from east/north to i/j ---
           uocn   (i,j,iblk) = dataPtr_ocncz  (i1,j1)
@@ -1102,8 +1103,8 @@ module cice_cap_mod
           ss_tlty(i,j,iblk) = dataPtr_sssm   (i1,j1)
 #else
           rhoa   (i,j,iblk) = dataPtr_rhoabot(i1,j1,iblk)  ! import directly from mediator  
-          if(dataPtr_pbot(i1,j1,iblk) .gt. 0.0) &
-          potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk) * (100000./dataPtr_pbot(i1,j1,iblk))**0.286 ! Potential temperature (K)
+          if(dataPtr_pbot(i1,j1) .gt. 0.0_ESMF_KIND_R8) &
+          potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk) * (100000._ESMF_KIND_R8/dataPtr_pbot(i1,j1,iblk))**0.286_ESMF_KIND_R8 ! Potential temperature (K)
           Tair   (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk)  ! near surface temp, maybe lowest level (K)
           Qa     (i,j,iblk) = dataPtr_qbot   (i1,j1,iblk)  ! near surface humidity, maybe lowest level (kg/kg)
           zlvl   (i,j,iblk) = dataPtr_zlvl   (i1,j1,iblk)  ! height of the lowest level (m) 
@@ -1116,7 +1117,7 @@ module cice_cap_mod
           frain  (i,j,iblk) = dataPtr_lprec  (i1,j1,iblk)  ! flux of rain (liquid only)
           fsnow  (i,j,iblk) = dataPtr_fprec  (i1,j1,iblk)  ! flux of frozen precip
           sss    (i,j,iblk) = dataPtr_sss    (i1,j1,iblk)  ! sea surface salinity (maybe for mushy layer)
-          sst    (i,j,iblk) = dataPtr_sst    (i1,j1,iblk) - 273.15  ! sea surface temp (may not be needed?)
+          sst    (i,j,iblk) = dataPtr_sst    (i1,j1,iblk) - Tffresh  ! sea surface temp (may not be needed?)
           frzmlt (i,j,iblk) = dataPtr_fmpot  (i1,j1,iblk)
 !          ! --- rotate these vectors from east/north to i/j ---
           uocn   (i,j,iblk) = dataPtr_ocncz  (i1,j1,iblk)
