@@ -7,10 +7,11 @@
 # SYSTEM_USERDIR
 # SRCDIR
 # EXEDIR
+setenv NCP /bin/cp
 ### Grid resolution
 #setenv RES col ; setenv GRID 5x5
 #setenv RES gx3 ; setenv GRID 100x116
-.
+#
 #setenv RES gx1 ; setenv GRID 320x384
 #setenv RES tx1 ; setenv GRID 360x240
 #setenv RES mx5 ; setenv GRID 720x410
@@ -166,11 +167,11 @@ setenv HSTDIR $EXEDIR/history           ; if !(-d $HSTDIR) mkdir -p $HSTDIR
 setenv ARCH `uname -s`
 if ( $ARCH == 'UNICOS/mp') setenv ARCH UNICOS
 if ( $ARCH == 'UNICOS') then
-   cp -f $CBLD/Makefile.$ARCH $CBLD/Makefile
+   $NCP -f $CBLD/Makefile.$ARCH $CBLD/Makefile
 else if ( $ARCH == 'Darwin' ) then
-   cp -f $CBLD/Makefile.$ARCH $CBLD/Makefile
+   $NCP -f $CBLD/Makefile.$ARCH $CBLD/Makefile
 else
-   cp -f $CBLD/Makefile.std $CBLD/Makefile
+   $NCP -f $CBLD/Makefile.std $CBLD/Makefile
 endif
 setenv ARCH $ARCH.$SITE
 
@@ -179,16 +180,16 @@ cd $SRCDIR/source
 cd $EXEDIR
 
 #if !($RES == 'col') then
-#if !(-e grid)    cp $SRCDIR/input_templates/$RES/global_$RES.grid grid
-#if !(-e kmt)     cp $SRCDIR/input_templates/$RES/global_$RES.kmt kmt
+#if !(-e grid)    $NCP $SRCDIR/input_templates/$RES/global_$RES.grid grid
+#if !(-e kmt)     $NCP $SRCDIR/input_templates/$RES/global_$RES.kmt kmt
 #endif
-#if !(-e ice_in)  cp $SRCDIR/input_templates/$RES/ice_in .
-#if !(-e run_ice) cp $SRCDIR/input_templates/run_ice.$ARCH run_ice
+#if !(-e ice_in)  $NCP $SRCDIR/input_templates/$RES/ice_in .
+#if !(-e run_ice) $NCP $SRCDIR/input_templates/run_ice.$ARCH run_ice
 
 cd $RSTDIR
 
-#cp $SRCDIR/input_templates/$RES/iced_$RES* .
-#if !(-e ice.restart_file) cp $SRCDIR/input_templates/$RES/ice.restart_file .
+#$NCP $SRCDIR/input_templates/$RES/iced_$RES* .
+#if !(-e ice.restart_file) $NCP $SRCDIR/input_templates/$RES/ice.restart_file .
 
 cd $OBJDIR
 
