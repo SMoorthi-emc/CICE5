@@ -67,31 +67,31 @@ module cice_cap_mod
     character(len=64) :: transferOffer
     logical           :: assoc    ! is the farrayPtr associated with internal data
 #ifdef CMEPS
-    real(ESMF_KIND_R8), dimension(:,:), pointer :: farrayPtr
+    real(ESMF_KIND_R8), dimension(:,:),   pointer :: farrayPtr
 #else
     real(ESMF_KIND_R8), dimension(:,:,:), pointer :: farrayPtr
 #endif
   end type fld_list_type
 
-  integer,parameter :: fldsMax = 100
-  integer :: fldsToIce_num = 0
+  integer,parameter    :: fldsMax = 100
+  integer              :: fldsToIce_num = 0
   type (fld_list_type) :: fldsToIce(fldsMax)
-  integer :: fldsFrIce_num = 0
+  integer              :: fldsFrIce_num = 0
   type (fld_list_type) :: fldsFrIce(fldsMax)
 
-  integer :: lsize    ! local number of gridcells for coupling
-  character(len=256)  :: tmpstr
-  character(len=2048) :: info
-  logical :: isPresent
-  integer :: dbrc     ! temporary debug rc value
+  integer              :: lsize    ! local number of gridcells for coupling
+  character(len=256)   :: tmpstr
+  character(len=2048)  :: info
+  logical              :: isPresent
+  integer              :: dbrc     ! temporary debug rc value
 
   type(ESMF_Grid), save :: ice_grid_i
-  logical :: write_diagnostics = .false.
+  logical :: write_diagnostics   = .false.
   logical :: overwrite_timeslice = .false.
-  logical :: profile_memory    = .false.
-  logical :: grid_attach_area  = .false.
+  logical :: profile_memory      = .false.
+  logical :: grid_attach_area    = .false.
   ! local helper flag for halo debugging
-  logical :: HaloDebug         = .false., lprnt=.false.
+  logical :: HaloDebug           = .false., lprnt=.false.
   integer :: ipr, jpr
 
 #ifdef CMEPS
@@ -194,6 +194,7 @@ module cice_cap_mod
     call ESMF_AttributeGet(gcomp, name="OverwriteSlice_ICE", value=value, defaultValue="true", &
                            convention="NUOPC", purpose="Instance", rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+
     overwrite_timeslice = (trim(value) /= "false")
     write(msgString,'(A,l6)')'CICE_CAP: OverwriteSlice = ',overwrite_timeslice
     call ESMF_LogWrite(trim(msgString), ESMF_LOGMSG_INFO, rc=rc)
@@ -603,12 +604,6 @@ module cice_cap_mod
 !    call state_reset(ImportState, value=-99._ESMF_KIND_R8, rc=rc)
 !    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
-#ifndef CMEPS
-    call state_reset(ExportState, value=-99._ESMF_KIND_R8, rc=rc)
-
-    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-#endif
-
 #ifdef CMEPS
     call ice_export(exportState)
 
@@ -617,6 +612,10 @@ module cice_cap_mod
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
     call State_SetScalar(dble(ny_global), flds_scalar_index_ny, exportState, &
                          flds_scalar_name, flds_scalar_num, rc)
+    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+#else
+    call state_reset(ExportState, value=-99._ESMF_KIND_R8, rc=rc)
+
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 #endif
 
@@ -680,13 +679,11 @@ module cice_cap_mod
     type(ESMF_State)                       :: importState, exportState
     type(ESMF_Time)                        :: currTime
     type(ESMF_TimeInterval)                :: timeStep
+    type(ESMF_Grid)                        :: grid
 #ifdef CMEPS
     type(ESMF_Field)                       :: lfield
 #else
     type(ESMF_Field)                       :: lfield,lfield2d
-#endif
-    type(ESMF_Grid)                        :: grid
-#ifndef CMEPS
     real(ESMF_KIND_R8), pointer            :: fldptr(:,:,:)
     real(ESMF_KIND_R8), pointer            :: fldptr2d(:,:)
 #endif
@@ -1008,8 +1005,11 @@ module cice_cap_mod
           ss_tlty(i,j,iblk) = dataPtr_sssm   (i1,j1)
 #else
           rhoa   (i,j,iblk) = dataPtr_rhoabot(i1,j1,iblk)  ! import directly from mediator  
-          if(dataPtr_pbot(i1,j1,iblk) > 0.0) &
-          potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk) * (100000./dataPtr_pbot(i1,j1,iblk))**0.286 ! Potential temperature (K)
+          if(dataPtr_pbot(i1,j1,iblk) > 10000.0) then
+            potT (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk) * (100000.0d0/dataPtr_pbot(i1,j1,iblk))**0.286 ! Potential temperature (K)
+          else
+            potT(i,j,iblk) = dataPtr_Tbot(i1,j1,iblk)
+          endif
           Tair   (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk)  ! near surface temp, maybe lowest level (K)
           Qa     (i,j,iblk) = dataPtr_qbot   (i1,j1,iblk)  ! near surface humidity, maybe lowest level (kg/kg)
           zlvl   (i,j,iblk) = dataPtr_zlvl   (i1,j1,iblk)  ! height of the lowest level (m) 
@@ -1099,6 +1099,7 @@ module cice_cap_mod
 
     call State_getFldPtr(exportState,'ice_fraction',dataPtr_ifrac,rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
+
     call State_getFldPtr(exportState,'sea_ice_surface_temperature',dataPtr_itemp,rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
 
@@ -1354,7 +1355,7 @@ module cice_cap_mod
   call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_air_ice_merid"         , "will provide", strairyT)
   call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_ocn_ice_zonal"         , "will provide", strocnxT)
   call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_ocn_ice_merid"         , "will provide", strocnyT)
-  call dumpCICEInternal(ice_grid_i, export_slice, "mean_sw_pen_to_ocn"              , "will provide", fswthru)
+  call dumpCICEInternal(ice_grid_i, export_slice, "mean_sw_pen_to_ocn"              , "will provide", fswthru) ! check this Moorthi
  !call dumpCICEInternal(ice_grid_i, export_slice, "mean_net_sw_vis_dir_flx"         , "will provide", fswthruvdr)
  !call dumpCICEInternal(ice_grid_i, export_slice, "mean_net_sw_vis_dif_flx"         , "will provide", fswthruvdf)
  !call dumpCICEInternal(ice_grid_i, export_slice, "mean_net_sw_ir_dir_flx"          , "will provide", fswthruidr)
@@ -1492,7 +1493,7 @@ module cice_cap_mod
        do i = ilo,ihi
           i1 = i - ilo + 1
           j1 = j - jlo + 1
-#ifdef CMEPS
+!#ifdef CMEPS
           if (hm(i,j,iblk) > 0.5) dataPtr_mask(i1,j1) = 1._ESMF_KIND_R8
           dataPtr_ifrac   (i1,j1) = aice(i,j,iblk)   ! ice fraction (0-1)
           if (dataPtr_ifrac(i1,j1) > 0._ESMF_KIND_R8) &
@@ -1524,39 +1525,39 @@ module cice_cap_mod
           vj = -strocnyT(i,j,iblk)
           dataPtr_strocnxT(i1,j1) = ui*cos(ANGLET(i,j,iblk)) - vj*sin(ANGLET(i,j,iblk))  ! ice ocean stress
           dataPtr_strocnyT(i1,j1) = ui*sin(ANGLET(i,j,iblk)) + vj*cos(ANGLET(i,j,iblk))  ! ice ocean stress
-#else
-          if (hm(i,j,iblk) > 0.5) dataPtr_mask(i1,j1,iblk) = 1._ESMF_KIND_R8
-          dataPtr_ifrac   (i1,j1,iblk) = aice(i,j,iblk)   ! ice fraction (0-1)
-          if (dataPtr_ifrac(i1,j1,iblk) > 0._ESMF_KIND_R8) &
-             dataPtr_itemp   (i1,j1,iblk) = Tffresh + trcr(i,j,1,iblk)  ! surface temperature of ice covered portion (degK)
-          dataPtr_alvdr   (i1,j1,iblk) = alvdr(i,j,iblk)  ! albedo vis dir
-          dataPtr_alidr   (i1,j1,iblk) = alidr(i,j,iblk)  ! albedo nir dir
-          dataPtr_alvdf   (i1,j1,iblk) = alvdf(i,j,iblk)  ! albedo vis dif
-          dataPtr_alidf   (i1,j1,iblk) = alidf(i,j,iblk)  ! albedo nir dif
-          dataPtr_fswthru (i1,j1,iblk) = fswthru(i,j,iblk) ! flux of shortwave through ice to ocean
-          dataPtr_fswthruvdr (i1,j1,iblk) = fswthruvdr(i,j,iblk) ! flux of vis dir shortwave through ice to ocean
-          dataPtr_fswthruvdf (i1,j1,iblk) = fswthruvdf(i,j,iblk) ! flux of vis dif shortwave through ice to ocean
-          dataPtr_fswthruidr (i1,j1,iblk) = fswthruidr(i,j,iblk) ! flux of ir dir shortwave through ice to ocean
-          dataPtr_fswthruidf (i1,j1,iblk) = fswthruidf(i,j,iblk) ! flux of ir dif shortwave through ice to ocean
-          dataPtr_flwout  (i1,j1,iblk) = flwout(i,j,iblk)   ! longwave outgoing (upward), average over ice fraction only
-          dataPtr_fsens   (i1,j1,iblk) =  fsens(i,j,iblk)   ! sensible
-          dataPtr_flat    (i1,j1,iblk) =   flat(i,j,iblk)   ! latent
-          dataPtr_evap    (i1,j1,iblk) =   evap(i,j,iblk)   ! evaporation (not ~latent, need separate field)
-          dataPtr_fhocn   (i1,j1,iblk) =  fhocn(i,j,iblk)   ! heat exchange with ocean 
-          dataPtr_fresh   (i1,j1,iblk) =  fresh(i,j,iblk)   ! fresh water to ocean
-          dataPtr_fsalt   (i1,j1,iblk) =  fsalt(i,j,iblk)   ! salt to ocean
-          dataPtr_vice    (i1,j1,iblk) =   vice(i,j,iblk)   ! sea ice volume
-          dataPtr_vsno    (i1,j1,iblk) =   vsno(i,j,iblk)   ! snow volume
-          ! --- rotate these vectors from i/j to east/north ---
-          ui = strairxT(i,j,iblk)
-          vj = strairyT(i,j,iblk)
-          dataPtr_strairxT(i1,j1,iblk) = ui*cos(ANGLET(i,j,iblk)) - vj*sin(ANGLET(i,j,iblk))  ! air ice stress
-          dataPtr_strairyT(i1,j1,iblk) = ui*sin(ANGLET(i,j,iblk)) + vj*cos(ANGLET(i,j,iblk))  ! air ice stress
-          ui = -strocnxT(i,j,iblk)
-          vj = -strocnyT(i,j,iblk)
-          dataPtr_strocnxT(i1,j1,iblk) = ui*cos(ANGLET(i,j,iblk)) - vj*sin(ANGLET(i,j,iblk))  ! ice ocean stress
-          dataPtr_strocnyT(i1,j1,iblk) = ui*sin(ANGLET(i,j,iblk)) + vj*cos(ANGLET(i,j,iblk))  ! ice ocean stress
-#endif
+!#else
+!         if (hm(i,j,iblk) > 0.5) dataPtr_mask(i1,j1,iblk) = 1._ESMF_KIND_R8
+!         dataPtr_ifrac   (i1,j1,iblk) = aice(i,j,iblk)   ! ice fraction (0-1)
+!         if (dataPtr_ifrac(i1,j1,iblk) > 0._ESMF_KIND_R8) &
+!            dataPtr_itemp   (i1,j1,iblk) = Tffresh + trcr(i,j,1,iblk)  ! surface temperature of ice covered portion (degK)
+!         dataPtr_alvdr   (i1,j1,iblk) = alvdr(i,j,iblk)  ! albedo vis dir
+!         dataPtr_alidr   (i1,j1,iblk) = alidr(i,j,iblk)  ! albedo nir dir
+!         dataPtr_alvdf   (i1,j1,iblk) = alvdf(i,j,iblk)  ! albedo vis dif
+!         dataPtr_alidf   (i1,j1,iblk) = alidf(i,j,iblk)  ! albedo nir dif
+!         dataPtr_fswthru (i1,j1,iblk) = fswthru(i,j,iblk) ! flux of shortwave through ice to ocean
+!         dataPtr_fswthruvdr (i1,j1,iblk) = fswthruvdr(i,j,iblk) ! flux of vis dir shortwave through ice to ocean
+!         dataPtr_fswthruvdf (i1,j1,iblk) = fswthruvdf(i,j,iblk) ! flux of vis dif shortwave through ice to ocean
+!         dataPtr_fswthruidr (i1,j1,iblk) = fswthruidr(i,j,iblk) ! flux of ir dir shortwave through ice to ocean
+!         dataPtr_fswthruidf (i1,j1,iblk) = fswthruidf(i,j,iblk) ! flux of ir dif shortwave through ice to ocean
+!         dataPtr_flwout  (i1,j1,iblk) = flwout(i,j,iblk)   ! longwave outgoing (upward), average over ice fraction only
+!         dataPtr_fsens   (i1,j1,iblk) =  fsens(i,j,iblk)   ! sensible
+!         dataPtr_flat    (i1,j1,iblk) =   flat(i,j,iblk)   ! latent
+!         dataPtr_evap    (i1,j1,iblk) =   evap(i,j,iblk)   ! evaporation (not ~latent, need separate field)
+!         dataPtr_fhocn   (i1,j1,iblk) =  fhocn(i,j,iblk)   ! heat exchange with ocean 
+!         dataPtr_fresh   (i1,j1,iblk) =  fresh(i,j,iblk)   ! fresh water to ocean
+!         dataPtr_fsalt   (i1,j1,iblk) =  fsalt(i,j,iblk)   ! salt to ocean
+!         dataPtr_vice    (i1,j1,iblk) =   vice(i,j,iblk)   ! sea ice volume
+!         dataPtr_vsno    (i1,j1,iblk) =   vsno(i,j,iblk)   ! snow volume
+!         ! --- rotate these vectors from i/j to east/north ---
+!         ui = strairxT(i,j,iblk)
+!         vj = strairyT(i,j,iblk)
+!         dataPtr_strairxT(i1,j1,iblk) = ui*cos(ANGLET(i,j,iblk)) - vj*sin(ANGLET(i,j,iblk))  ! air ice stress
+!         dataPtr_strairyT(i1,j1,iblk) = ui*sin(ANGLET(i,j,iblk)) + vj*cos(ANGLET(i,j,iblk))  ! air ice stress
+!         ui = -strocnxT(i,j,iblk)
+!         vj = -strocnyT(i,j,iblk)
+!         dataPtr_strocnxT(i1,j1,iblk) = ui*cos(ANGLET(i,j,iblk)) - vj*sin(ANGLET(i,j,iblk))  ! ice ocean stress
+!         dataPtr_strocnyT(i1,j1,iblk) = ui*sin(ANGLET(i,j,iblk)) + vj*cos(ANGLET(i,j,iblk))  ! ice ocean stress
+!#endif
        enddo
        enddo
     enddo
@@ -1658,6 +1659,7 @@ module cice_cap_mod
     do i = 1, nfields
 
       if (field_defs(i)%assoc) then
+
 #ifdef CMEPS
         write(info, *) trim(subname), tag, ' Field ', trim(field_defs(i)%shortname), ':', &
                        lbound(field_defs(i)%farrayPtr,1), ubound(field_defs(i)%farrayPtr,1), &
@@ -1691,6 +1693,7 @@ module cice_cap_mod
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 #endif
       else
+
 #ifdef CMEPS
 
         if (trim(field_defs(i)%shortname) == trim(flds_scalar_name)) then
