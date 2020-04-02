@@ -1103,7 +1103,7 @@ module cice_cap_mod
           ss_tlty(i,j,iblk) = dataPtr_sssm   (i1,j1)
 #else
           rhoa   (i,j,iblk) = dataPtr_rhoabot(i1,j1,iblk)  ! import directly from mediator  
-          if(dataPtr_pbot(i1,j1) .gt. 0.0_ESMF_KIND_R8) &
+          if(dataPtr_pbot(i1,j1,iblk) .gt. 0.0_ESMF_KIND_R8) &
           potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk) * (100000._ESMF_KIND_R8/dataPtr_pbot(i1,j1,iblk))**0.286_ESMF_KIND_R8 ! Potential temperature (K)
           Tair   (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk)  ! near surface temp, maybe lowest level (K)
           Qa     (i,j,iblk) = dataPtr_qbot   (i1,j1,iblk)  ! near surface humidity, maybe lowest level (kg/kg)
