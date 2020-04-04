@@ -1348,6 +1348,7 @@
                                albicen, albsnon, albpndn, &
                                alvdrn, alidrn, alvdfn, alidfn, &
                                run_dedd, shortwave_ccsm3, apeffn
+                               snowfracn
       use ice_state, only: aicen, vicen, vsnon, trcrn, nt_Tsfc
       use ice_timers, only: ice_timer_start, ice_timer_stop, timer_sw
 
@@ -1417,6 +1418,7 @@
                        Sswabsn(:,:,:,:,iblk), Iswabsn(:,:,:,:,iblk),   &
                        albicen(:,:,:,iblk),   albsnon(:,:,:,iblk),     &
                        albpndn(:,:,:,iblk),   apeffn(:,:,:,iblk),      &
+                       snowfracn(:,:,:,iblk), &
                        dhsn(:,:,:,iblk),      ffracn(:,:,:,iblk))
          
       else  ! .not. dEdd
