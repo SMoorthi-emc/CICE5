@@ -52,8 +52,8 @@
       use ice_domain, only: nblocks
       use ice_domain_size, only: nilyr, nslyr, ncat, max_blocks
       use ice_fileunits, only: nu_diag, nu_rst_pointer, nu_dump
-      use ice_flux, only: coszen, scale_factor, swvdr, swvdf, swidr, swidf, &
-          strocnxT, strocnyT, sst, frzmlt, iceumask, &
+      use ice_flux, only: scale_factor, swvdr, swvdf, swidr, swidf, &
+          strocnxT, strocnyT, sst, frzmlt, iceumask, coszen, &
           stressp_1, stressp_2, stressp_3, stressp_4, &
           stressm_1, stressm_2, stressm_3, stressm_4, &
           stress12_1, stress12_2, stress12_3, stress12_4
@@ -200,8 +200,8 @@
       use ice_domain_size, only: nilyr, nslyr, ncat, nx_global, ny_global, &
           max_ntrcr, max_blocks
       use ice_fileunits, only: nu_diag, nu_rst_pointer, nu_restart
-      use ice_flux, only: coszen,scale_factor, swvdr, swvdf, swidr, swidf, &
-          strocnxT, strocnyT, sst, frzmlt, iceumask, &
+      use ice_flux, only: scale_factor, swvdr, swvdf, swidr, swidf, &
+          strocnxT, strocnyT, sst, frzmlt, iceumask, coszen, &
           stressp_1, stressp_2, stressp_3, stressp_4, &
           stressm_1, stressm_2, stressm_3, stressm_4, &
           stress12_1, stress12_2, stress12_3, stress12_4

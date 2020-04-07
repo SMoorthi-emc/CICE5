@@ -172,7 +172,6 @@
       use ice_brine, only: init_hbrine
       use ice_calendar, only: time, calendar
       use ice_domain, only: nblocks
-!     use ice_domain_size, only: ncat
       use ice_domain_size, only: ncat, max_ntrcr
       use ice_dyn_eap, only: read_restart_eap
       use ice_dyn_shared, only: kdyn
@@ -190,10 +189,7 @@
           restart_pond_topo, read_restart_pond_topo
       use ice_restart_shared, only: runtype, restart
       use ice_restart_driver, only: restartfile, restartfile_v4
-!     use ice_state, only: tr_iage, tr_FY, tr_lvl, tr_pond_cesm, &
-!         tr_pond_lvl, tr_pond_topo, tr_aero, trcrn, &
-!         nt_iage, nt_FY, nt_alvl, nt_vlvl, nt_apnd, nt_hpnd, nt_ipnd, tr_brine
-      use ice_state
+      use ice_state ! almost everything
       use ice_zbgc, only: init_bgc
       use ice_zbgc_shared, only: skl_bgc
 
@@ -315,8 +311,7 @@
                          trcr_depend)
 
       enddo
-
-
+      !$OMP END PARALLEL DO
       end subroutine init_restart
 
 !=======================================================================
