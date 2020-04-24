@@ -1048,8 +1048,7 @@
         indxj
 
       real (kind=dbl_kind)    :: tx1, tx2
-      integer (kind=int_kind) :: &
-        i, j, k, n, iblk, ij
+      integer (kind=int_kind) :: i, j, k, n, iblk, ij
 
 !
       tx1 = 1.0 / real(nilyr,kind=dbl_kind)
