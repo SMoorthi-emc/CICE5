@@ -964,7 +964,6 @@ module cice_cap_mod
     call State_getFldPtr(importState,'air_density_height_lowest',dataPtr_rhoabot,rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
 
-       potT = 0.0_ESMF_KIND_R8
     do iblk = 1,nblocks
       this_block = get_block(blocks_ice(iblk),iblk)
       ilo = this_block%ilo
@@ -1006,8 +1005,11 @@ module cice_cap_mod
           ss_tlty(i,j,iblk) = dataPtr_sssm   (i1,j1)
 #else
           rhoa   (i,j,iblk) = dataPtr_rhoabot(i1,j1,iblk)  ! import directly from mediator  
-          if(dataPtr_pbot(i1,j1,iblk) > 0.0_ESMF_KIND_R8) &
-          potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk) * (100000._ESMF_KIND_R8/dataPtr_pbot(i1,j1,iblk))**0.286_ESMF_KIND_R8 ! Potential temperature (K)
+          if(dataPtr_pbot(i1,j1,iblk) > 0.0_ESMF_KIND_R8) then
+            potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk) * (100000._ESMF_KIND_R8/dataPtr_pbot(i1,j1,iblk))**0.286_ESMF_KIND_R8 ! Potential temperature (K)
+          else
+            potT(i,j,iblk) = dataPtr_Tbot(i1,j1,iblk)
+          endif
           Tair   (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk)  ! near surface temp, maybe lowest level (K)
           Qa     (i,j,iblk) = dataPtr_qbot   (i1,j1,iblk)  ! near surface humidity, maybe lowest level (kg/kg)
           zlvl   (i,j,iblk) = dataPtr_zlvl   (i1,j1,iblk)  ! height of the lowest level (m) 
