@@ -23,8 +23,8 @@ module cice_cap_mod
   use ice_domain_size,  only: max_blocks, nx_global, ny_global
   use ice_domain,       only: nblocks, blocks_ice, halo_info, distrb_info
   use ice_distribution, only: ice_distributiongetblockloc
-  use ice_constants,    only: Tffresh, rad_to_deg
-  use ice_calendar,     only: dt
+  use ice_constants, only: c0, Tffresh, rad_to_deg, depressT
+  use ice_calendar,  only: dt
   use ice_flux
   use ice_grid,         only: TLAT, TLON, ULAT, ULON, hm, tarea, ANGLET, ANGLE, &
                               dxt, dyt, t2ugrid_vector
@@ -862,6 +862,8 @@ module cice_cap_mod
     real(ESMF_KIND_R8), pointer :: dataPtr_vice(:,:,:)
     real(ESMF_KIND_R8), pointer :: dataPtr_vsno(:,:,:)
 #endif
+    character(240)              :: import_timestr, export_timestr
+    character(240)              :: fname
     character(240)              :: msgString
     character(len=*),parameter  :: subname='(cice_cap:ModelAdvance_slow)'
 
@@ -905,12 +907,26 @@ module cice_cap_mod
     call ESMF_LogWrite(msgString, ESMF_LOGMSG_INFO, rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
-    if(write_diagnostics) then
-      import_slice = import_slice + 1
+    call ESMF_TimeGet(currTime,          timestring=import_timestr, rc=rc)
+    call ESMF_TimeGet(currTime+timestep, timestring=export_timestr, rc=rc)
+
+  if(write_diagnostics) then
+    call state_diagnose(importState, 'cice_import', rc)
+
+    fname = 'field_ice_import_'//trim(import_timestr)//'.nc'
+    do i = 1,fldsToice_num
+      fldname = fldsToice(i)%shortname
+      call ESMF_StateGet(importState, itemName=trim(fldname), itemType=itemType, rc=rc)
+      if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+      if (itemType /= ESMF_STATEITEM_NOTFOUND) then
+        call ESMF_StateGet(importState, itemName=trim(fldname), field=lfield, rc=rc)
+        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+        call ESMF_FieldGet(lfield,grid=grid,rc=rc)
+        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
 #ifdef CMEPS
-        call ESMF_FieldWrite(lfield, fileName='field_ice_import_'//trim(fldname)//'.nc', &
-                             timeslice=import_slice, overwrite=overwrite_timeslice, rc=rc)
+        call ESMF_FieldWrite(lfield, fileName=trim(fname), &
+                             timeslice=1, overwrite=overwrite_timeslice, rc=rc)
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 #else
         ! create a copy of the 3d data in lfield but in a 2d array, lfield2d
@@ -928,14 +944,12 @@ module cice_cap_mod
           call ESMF_StateGet(importState, itemName=trim(fldname), field=lfield, rc=rc)
           if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
-        call ESMF_FieldWrite(lfield2d, fileName='field_ice_import_'//trim(fldname)//'.nc', &
-                             timeslice=import_slice, overwrite=overwrite_timeslice, rc=rc) 
-        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-          return  ! bail out
+        call ESMF_FieldWrite(lfield2d, fileName=trim(fname), &
+                             timeslice=1, overwrite=overwrite_timeslice, rc=rc) 
+        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
         call ESMF_FieldDestroy(lfield2d, noGarbage=.true., rc=rc)
-        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-          return  ! bail out
+        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 #endif
       endif
     enddo
@@ -1013,15 +1027,17 @@ module cice_cap_mod
     call State_getFldPtr(importState,'inst_height_lowest',dataPtr_zlvl,rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
 
-    call State_getFldPtr(importState,'air_density_height_lowest',dataPtr_rhoabot,rc=rc)
-    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
+!   call State_getFldPtr(importState,'air_density_height_lowest',dataPtr_rhoabot,rc=rc)
+!   if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
 
-#if (1 == 0)
-! this calculation of slope produces anomalies along the tripole seam
-! use the MOM6 import fields of slope instead
-    allocate(ssh(1:nx_block,1:ny_block,1:nblocks))
-    ssh = 0._ESMF_KIND_R8
+    ! for CMEPS, the air density is no longer sent from the mediator. For NEMS, this field can still
+    ! be advertised and sent (so that no changes are required to NEMS), but this field is now calculated 
+    ! below with a calculation of air density equivalent to the mediator calculation
+    !call State_getFldPtr(importState,'air_density_height_lowest',dataPtr_rhoabot,rc=rc)
+    !if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
 
+       rhoa = 0.0_ESMF_KIND_R8
+       potT = 0.0_ESMF_KIND_R8
     do iblk = 1,nblocks
       this_block = get_block(blocks_ice(iblk),iblk)
       ilo = this_block%ilo
@@ -1150,9 +1166,11 @@ module cice_cap_mod
           ! i1=1:120,j1=1:540
           i1 = i - ilo + 1
 #ifdef CMEPS
-          rhoa   (i,j,iblk) = dataPtr_rhoabot(i1,j1)  ! import directly from mediator  
-          if(dataPtr_pbot(i1,j1) > 0.0) &
-          potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1) * (100000./dataPtr_pbot(i1,j1))**0.286 ! Potential temperature (K)
+          if (dataPtr_Tbot(i1,j1) /= 0._ESMF_KIND_R8) rhoa(i,j,iblk) = dataPtr_pbot(i1,j1)/&
+             (287.058_ESMF_KIND_R8*(1._ESMF_KIND_R8+0.608_ESMF_KIND_R8*dataPtr_qbot(i1,j1))*dataPtr_Tbot(i1,j1))
+!         rhoa   (i,j,iblk) = dataPtr_rhoabot(i1,j1)  ! import directly from mediator  
+          if(dataPtr_pbot(i1,j1) > 0.0_ESMF_KIND_R8) &
+          potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1) * (100000._ESMF_KIND_R8/dataPtr_pbot(i1,j1))**0.286_ESMF_KIND_R8 ! Potential temperature (K)
           Tair   (i,j,iblk) = dataPtr_Tbot   (i1,j1)  ! near surface temp, maybe lowest level (K)
           Qa     (i,j,iblk) = dataPtr_qbot   (i1,j1)  ! near surface humidity, maybe lowest level (kg/kg)
           zlvl   (i,j,iblk) = dataPtr_zlvl   (i1,j1)  ! height of the lowest level (m) 
@@ -1165,7 +1183,7 @@ module cice_cap_mod
           frain  (i,j,iblk) = dataPtr_lprec  (i1,j1)  ! flux of rain (liquid only)
           fsnow  (i,j,iblk) = dataPtr_fprec  (i1,j1)  ! flux of frozen precip
           sss    (i,j,iblk) = dataPtr_sss    (i1,j1)  ! sea surface salinity (maybe for mushy layer)
-          sst    (i,j,iblk) = dataPtr_sst    (i1,j1) - 273.15  ! sea surface temp (may not be needed?)
+          sst    (i,j,iblk) = dataPtr_sst    (i1,j1) - Tffresh  ! sea surface temp (may not be needed?)
           frzmlt (i,j,iblk) = dataPtr_fmpot  (i1,j1)
 !          ! --- rotate these vectors from east/north to i/j ---
           uocn   (i,j,iblk) = dataPtr_ocncz  (i1,j1)
@@ -1175,9 +1193,11 @@ module cice_cap_mod
           ss_tltx(i,j,iblk) = dataPtr_sssz   (i1,j1)
           ss_tlty(i,j,iblk) = dataPtr_sssm   (i1,j1)
 #else
-          rhoa   (i,j,iblk) = dataPtr_rhoabot(i1,j1,iblk)  ! import directly from mediator  
-          if(dataPtr_pbot(i1,j1,iblk) > 0.0) &
-          potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk) * (100000./dataPtr_pbot(i1,j1,iblk))**0.286 ! Potential temperature (K)
+          if (dataPtr_Tbot(i1,j1,iblk) /= 0._ESMF_KIND_R8) rhoa(i,j,iblk) = dataPtr_pbot(i1,j1,iblk)/&
+             (287.058_ESMF_KIND_R8*(1._ESMF_KIND_R8+0.608_ESMF_KIND_R8*dataPtr_qbot(i1,j1,iblk))*dataPtr_Tbot(i1,j1,iblk))
+          !rhoa   (i,j,iblk) = dataPtr_rhoabot(i1,j1,iblk)  ! import directly from mediator  
+          if(dataPtr_pbot(i1,j1,iblk) .gt. 0.0_ESMF_KIND_R8) &
+          potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk) * (100000._ESMF_KIND_R8/dataPtr_pbot(i1,j1,iblk))**0.286_ESMF_KIND_R8 ! Potential temperature (K)
           Tair   (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk)  ! near surface temp, maybe lowest level (K)
           Qa     (i,j,iblk) = dataPtr_qbot   (i1,j1,iblk)  ! near surface humidity, maybe lowest level (kg/kg)
           zlvl   (i,j,iblk) = dataPtr_zlvl   (i1,j1,iblk)  ! height of the lowest level (m) 
@@ -1190,17 +1210,7 @@ module cice_cap_mod
           frain  (i,j,iblk) = dataPtr_lprec  (i1,j1,iblk)  ! flux of rain (liquid only)
           fsnow  (i,j,iblk) = dataPtr_fprec  (i1,j1,iblk)  ! flux of frozen precip ! fprec is all junk values from med, no src
           sss    (i,j,iblk) = dataPtr_sss    (i1,j1,iblk)  ! sea surface salinity (maybe for mushy layer)
-! availability of ocean heat content (or freezing potential, use all if freezing) ! can potentially connect but contains junk from med, no src
-          sst    (i,j,iblk) = dataPtr_sst    (i1,j1,iblk) - 273.15d0  ! sea surface temp (may not be needed?)
-
-!!    Ice%bheat : bottom heat conducted up from ocean due to temperaure difference between sst and melting ice
-!!    real    :: kmelt          = 6e-5*4e6   ! ocean/ice heat flux constant
-!!    real, public, parameter :: TFREEZE = 273.16 
-!!    real, parameter :: MU_TS = 0.054     ! relates freezing temp. to salinity
-!         frzmlt (i,j,iblk) = -6e-5*4e6*(sst (i,j,iblk) + 0.054*dataPtr_sss(i1,j1,iblk))
-!         if(dataPtr_fmpot  (i1,j1,iblk) .gt. 0) frzmlt (i,j,iblk) = dataPtr_fmpot  (i1,j1,iblk)/dt  
-! Fei, Let MOM5 take care of frazil calculation 10/5/15 (import dataPtr_fmpot in W/m^2)
-
+          sst    (i,j,iblk) = dataPtr_sst    (i1,j1,iblk) - Tffresh  ! sea surface temp (may not be needed?)
           frzmlt (i,j,iblk) = dataPtr_fmpot  (i1,j1,iblk)
 
 !         hmix   (i,j,iblk) = dataPtr_mld    (i1,j1,iblk)  ! ocean mixed layer depth (may not be needed?)
@@ -1472,15 +1482,7 @@ module cice_cap_mod
   if(write_diagnostics) then
     call state_diagnose(exportState, 'cice_export', rc)
 
-    export_slice = export_slice + 1
-
-#if (1 == 0)
-!tcx causes core dumps and garbage
-    call NUOPC_StateWrite(exportState, filePrefix='field_ice_export_', &
-                          timeslice=export_slice, relaxedFlag=.true., rc=rc) 
-    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-
-#else
+    fname = 'field_ice_export_'//trim(export_timestr)//'.nc'
     do i = 1,fldsFrIce_num
       fldname = fldsFrIce(i)%shortname
       call ESMF_StateGet(exportState, itemName=trim(fldname), itemType=itemType, rc=rc)
@@ -1494,8 +1496,8 @@ module cice_cap_mod
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
 #ifdef CMEPS
-        call ESMF_FieldWrite(lfield, fileName='field_ice_export_'//trim(fldname)//'.nc', &
-                             timeslice=export_slice, overwrite=overwrite_timeslice, rc=rc)
+        call ESMF_FieldWrite(lfield, fileName=trim(fname), &
+                             timeslice=1, overwrite=overwrite_timeslice, rc=rc)
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 #else
         ! create a copy of the 3d data in lfield but in a 2d array, lfield2d
@@ -1512,13 +1514,8 @@ module cice_cap_mod
 
         fldptr2d(:,:) = fldptr(:,:,1)
 
-! causes core dumps and garbage
-!        call NUOPC_Write(lfield, fileName='field_ice_export_'//trim(fldname)//'.nc', &
-!                         timeslice=export_slice, relaxedFlag=.true., rc=rc) 
-!        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-
-        call ESMF_FieldWrite(lfield2d, fileName='field_ice_export_'//trim(fldname)//'.nc', &
-                             timeslice=export_slice, overwrite=overwrite_timeslice,rc=rc) 
+        call ESMF_FieldWrite(lfield2d, fileName=trim(fname), &
+                             timeslice=1, overwrite=overwrite_timeslice,rc=rc) 
         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
         call ESMF_FieldDestroy(lfield2d, noGarbage=.true., rc=rc)
@@ -1534,85 +1531,30 @@ module cice_cap_mod
 ! Dump out all the cice internal fields to cross-examine with those connected with mediator
 ! This will help to determine roughly which fields can be hooked into cice
 
-  call dumpCICEInternal(ice_grid_i, import_slice, "inst_zonal_wind_height10m"    , "will provide", strax)
-  call dumpCICEInternal(ice_grid_i, import_slice, "inst_merid_wind_height10m"    , "will provide", stray)
-  call dumpCICEInternal(ice_grid_i, import_slice, "inst_pres_height_surface"     , "will provide", zlvl)
- !call dumpCICEInternal(ice_grid_i, import_slice, "xx_pot_air_temp"              , "will provide", potT)
- !call dumpCICEInternal(ice_grid_i, import_slice, "inst_temp_height2m"           , "will provide", Tair)
- !call dumpCICEInternal(ice_grid_i, import_slice, "inst_spec_humid_height2m"     , "will provide", Qa)
- !call dumpCICEInternal(ice_grid_i, import_slice, "xx_inst_air_density"          , "will provide", rhoa)
- !call dumpCICEInternal(ice_grid_i, import_slice, "mean_down_sw_vis_dir_flx"     , "will provide", swvdr)
- !call dumpCICEInternal(ice_grid_i, import_slice, "mean_down_sw_vis_dif_flx"     , "will provide", swvdf)
- !call dumpCICEInternal(ice_grid_i, import_slice, "mean_down_sw_ir_dir_flx"      , "will provide", swidr)
- !call dumpCICEInternal(ice_grid_i, import_slice, "mean_down_sw_ir_dif_flx"      , "will provide", swidf)
- !call dumpCICEInternal(ice_grid_i, import_slice, "mean_down_lw_flx"             , "will provide", flw)
- !call dumpCICEInternal(ice_grid_i, import_slice, "mean_prec_rate"               , "will provide", frain)
- !call dumpCICEInternal(ice_grid_i, import_slice, "mean_fprec_rate"              , "will provide", fsnow)
-  call dumpCICEInternal(ice_grid_i, import_slice, "ocn_current_zonal"            , "will provide", uocn)
-  call dumpCICEInternal(ice_grid_i, import_slice, "ocn_current_merid"            , "will provide", vocn)
-  call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_slope_zonal"      , "will provide", ss_tltx)
-  call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_slope_merid"      , "will provide", ss_tlty)
-  call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_salinity"         , "will provide", sss)
-  call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_temperature"      , "will provide", sst)
- !call dumpCICEInternal(ice_grid_i, import_slice, "freezing_melting_potential"   , "will provide", frzmlt)
- !call dumpCICEInternal(ice_grid_i, import_slice, "xx_inst_frz_mlt_potential"    , "will provide", frzmlt_init)
- !call dumpCICEInternal(ice_grid_i, import_slice, "freezing_temp"                , "will provide", Tf)
- !call dumpCICEInternal(ice_grid_i, import_slice, "mean_deep_ocean_down_heat_flx", "will provide", qdp)
- !call dumpCICEInternal(ice_grid_i, import_slice, "mixed_layer_depth"            , "will provide", hmix)
- !call dumpCICEInternal(ice_grid_i, import_slice, "xx_daice_da"                  , "will provide", daice_da)
+   !import_slice = import_slice + 1
+   !call dumpCICEInternal(ice_grid_i, import_slice, "air_density_height_lowest", "will provide", rhoa)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "inst_zonal_wind_height10m", "will provide", strax)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "inst_merid_wind_height10m", "will provide", stray)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "inst_pres_height_surface" , "will provide", zlvl)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "ocn_current_zonal", "will provide", uocn)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "ocn_current_merid", "will provide", vocn)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_slope_zonal", "will provide", ss_tltx)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_slope_merid", "will provide", ss_tlty)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_salinity", "will provide", sss)
+   !call dumpCICEInternal(ice_grid_i, import_slice, "sea_surface_temperature", "will provide", sst)
 
 !--------- export fields from Sea Ice -------------
 
-  call dumpCICEInternal(ice_grid_i, export_slice, "ice_fraction"                    , "will provide", aice)
- !call dumpCICEInternal(ice_grid_i, export_slice, "inst_ice_vis_dir_albedo"         , "will provide", alvdr)
- !call dumpCICEInternal(ice_grid_i, export_slice, "inst_ice_ir_dir_albedo"          , "will provide", alidr)
- !call dumpCICEInternal(ice_grid_i, export_slice, "inst_ice_vis_dif_albedo"         , "will provide", alvdf)
- !call dumpCICEInternal(ice_grid_i, export_slice, "inst_ice_ir_dif_albedo"          , "will provide", alidf)
-  call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_air_ice_zonal"         , "will provide", strairxT)
-  call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_air_ice_merid"         , "will provide", strairyT)
-  call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_ocn_ice_zonal"         , "will provide", strocnxT)
-  call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_ocn_ice_merid"         , "will provide", strocnyT)
- !call dumpCICEInternal(ice_grid_i, export_slice, "mean_sw_pen_to_ocn"              , "will provide", fswthru)
- !call dumpCICEInternal(ice_grid_i, export_slice, "mean_net_sw_vis_dir_flx"         , "will provide", fswthruvdr)
- !call dumpCICEInternal(ice_grid_i, export_slice, "mean_net_sw_vis_dif_flx"         , "will provide", fswthruvdf)
- !call dumpCICEInternal(ice_grid_i, export_slice, "mean_net_sw_ir_dir_flx"          , "will provide", fswthruidr)
- !call dumpCICEInternal(ice_grid_i, export_slice, "mean_net_sw_ir_dif_flx"          , "will provide", fswthruidf)
- !call dumpCICEInternal(ice_grid_i, export_slice, "mean_up_lw_flx_ice"              , "will provide", flwout)
- !call dumpCICEInternal(ice_grid_i, export_slice, "mean_sensi_heat_flx_atm_into_ice", "will provide", fsens)
- !call dumpCICEInternal(ice_grid_i, export_slice, "mean_laten_heat_flx_atm_into_ice", "will provide", flat)
- !call dumpCICEInternal(ice_grid_i, export_slice, "mean_evap_rate_atm_into_ice"     , "will provide", evap)
- !call dumpCICEInternal(ice_grid_i, export_slice, "mean_fresh_water_to_ocean_rate"  , "will provide", fresh)
- !call dumpCICEInternal(ice_grid_i, export_slice, "mean_salt_rate"                  , "will provide", fsalt)
- !call dumpCICEInternal(ice_grid_i, export_slice, "net_heat_flx_to_ocn"             , "will provide", fhocn)
- !call dumpCICEInternal(ice_grid_i, export_slice, "mean_ice_volume"                 , "will provide", vice)
- !call dumpCICEInternal(ice_grid_i, export_slice, "mean_snow_volume"                , "will provide", vsno)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_inst_temp_height2m", "will provide", Tref)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_inst_spec_humid_height2m", "will provide", Qref)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_mean_albedo_vis_dir", "will provide", alvdr_ai)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_mean_albedo_nir_dir", "will provide", alidr_ai)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_mean_albedo_vis_dif", "will provide", alvdf_ai)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_mean_albedo_nir_dif", "will provide", alidf_ai)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_bare_ice_albedo", "will provide", albice)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_snow_albedo", "will provide", albsno)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_melt_pond_albedo", "will provide", albpnd)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_apeff_ai", "will provide", apeff_ai)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_mean_fresh_water_flx_to_ponds", "will provide", fpond)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_strairx_ocn", "will provide", strairx_ocn)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_strairy_ocn", "will provide", strairy_ocn)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_mean_sensi_heat_flx", "will provide", fsens_ocn)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_mean_laten_heat_flx", "will provide", flat_ocn)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_flwout_ocn", "will provide", flwout_ocn)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_evap_ocn", "will provide", evap_ocn)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_albedo_vis_dir", "will provide", alvdr_ocn)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_albedo_nir_dir", "will provide", alidr_ocn)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_albedo_vis_dif", "will provide", alvdf_ocn)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_albedo_nir_dif", "will provide", alidf_ocn)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_2m_atm_ref_temperature", "will provide", Tref_ocn)
- !call dumpCICEInternal(ice_grid_i, export_slice, "xx_2m_atm_ref_spec_humidity", "will provide", Qref_ocn)
+   !export_slice = export_slice + 1
+   !call dumpCICEInternal(ice_grid_i, export_slice, "ice_fraction"                    , "will provide", aice)
+   !call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_air_ice_zonal"         , "will provide", strairxT)
+   !call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_air_ice_merid"         , "will provide", strairyT)
+   !call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_ocn_ice_zonal"         , "will provide", strocnxT)
+   !call dumpCICEInternal(ice_grid_i, export_slice, "stress_on_ocn_ice_merid"         , "will provide", strocnyT)
+   !call dumpCICEInternal(ice_grid_i, export_slice, "mean_sw_pen_to_ocn"              , "will provide", fswthru)
+   if(profile_memory) call ESMF_VMLogMemInfo("Leaving CICE Model_ADVANCE: ")
 
-  if(profile_memory) call ESMF_VMLogMemInfo("Leaving CICE Model_ADVANCE: ")
-
-  end subroutine 
+  end subroutine ModelAdvance_slow 
 
 
 #ifdef CMEPS
