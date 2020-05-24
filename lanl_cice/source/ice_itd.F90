@@ -1860,6 +1860,7 @@
       l_stop = .false.
       istop = 0
       jstop = 0
+      flux_bio = 0.0
 
       zspace = c1/(real(nblyr,kind=dbl_kind)) 
       
