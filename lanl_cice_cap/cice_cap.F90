@@ -26,7 +26,7 @@ module cice_cap_mod
   use ice_domain_size,  only: max_blocks, nx_global, ny_global
   use ice_domain,       only: nblocks, blocks_ice, halo_info, distrb_info
   use ice_distribution, only: ice_distributiongetblockloc
-  use ice_constants,    only: c0, Tffresh, rad_to_deg, depressT
+  use ice_constants,    only: c0, c1, Tffresh, rad_to_deg, depressT
   use ice_calendar,     only: dt
   use ice_flux
   use ice_grid,         only: TLAT, TLON, ULAT, ULON, hm, tarea, ANGLET, ANGLE, &
@@ -969,8 +969,8 @@ module cice_cap_mod
     !call State_getFldPtr(importState,'air_density_height_lowest',dataPtr_rhoabot,rc=rc)
     !if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
 
-    rhoa = 0.0_ESMF_KIND_R8
-    potT = 0.0_ESMF_KIND_R8
+    rhoa = c0
+    potT = c0
     do iblk = 1,nblocks
       this_block = get_block(blocks_ice(iblk),iblk)
       ilo = this_block%ilo
@@ -986,10 +986,10 @@ module cice_cap_mod
           ! i1=1:120,j1=1:540
           i1 = i - ilo + 1
 #ifdef CMEPS
-          if (dataPtr_Tbot(i1,j1) /= 0._ESMF_KIND_R8) rhoa(i,j,iblk) = dataPtr_pbot(i1,j1)/&
-             (287.058_ESMF_KIND_R8*(1._ESMF_KIND_R8+0.608_ESMF_KIND_R8*dataPtr_qbot(i1,j1))*dataPtr_Tbot(i1,j1))
+          if (dataPtr_Tbot(i1,j1) /= c0) rhoa(i,j,iblk) = dataPtr_pbot(i1,j1)/&
+             (287.058_ESMF_KIND_R8*(c1+0.608_ESMF_KIND_R8*dataPtr_qbot(i1,j1))*dataPtr_Tbot(i1,j1))
           !rhoa   (i,j,iblk) = dataPtr_rhoabot(i1,j1)  ! import directly from mediator  
-          if(dataPtr_pbot(i1,j1) .gt. 0.0_ESMF_KIND_R8) &
+          if(dataPtr_pbot(i1,j1) > c0) &
           potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1) * (100000._ESMF_KIND_R8/dataPtr_pbot(i1,j1))**0.286_ESMF_KIND_R8 ! Potential temperature (K)
           Tair   (i,j,iblk) = dataPtr_Tbot   (i1,j1)  ! near surface temp, maybe lowest level (K)
           Qa     (i,j,iblk) = dataPtr_qbot   (i1,j1)  ! near surface humidity, maybe lowest level (kg/kg)
@@ -1014,9 +1014,9 @@ module cice_cap_mod
           ss_tlty(i,j,iblk) = dataPtr_sssm   (i1,j1)
 #else
 !         rhoa   (i,j,iblk) = dataPtr_rhoabot(i1,j1,iblk)  ! import directly from mediator  
-          if (dataPtr_Tbot(i1,j1,iblk) /= 0._ESMF_KIND_R8) rhoa(i,j,iblk) = dataPtr_pbot(i1,j1,iblk)/&
-             (287.058_ESMF_KIND_R8*(1._ESMF_KIND_R8+0.608_ESMF_KIND_R8*dataPtr_qbot(i1,j1,iblk))*dataPtr_Tbot(i1,j1,iblk))
-          if(dataPtr_pbot(i1,j1,iblk) > 0.0_ESMF_KIND_R8) then
+          if (dataPtr_Tbot(i1,j1,iblk) > c0) rhoa(i,j,iblk) = dataPtr_pbot(i1,j1,iblk)/&
+             (287.058_ESMF_KIND_R8*(c1+0.608_ESMF_KIND_R8*dataPtr_qbot(i1,j1,iblk))*dataPtr_Tbot(i1,j1,iblk))
+          if(dataPtr_pbot(i1,j1,iblk) > c0) then
             potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1,iblk) * (100000._ESMF_KIND_R8/dataPtr_pbot(i1,j1,iblk))**0.286_ESMF_KIND_R8 ! Potential temperature (K)
           else
             potT(i,j,iblk) = dataPtr_Tbot(i1,j1,iblk)
@@ -1025,10 +1025,10 @@ module cice_cap_mod
           Qa     (i,j,iblk) = dataPtr_qbot   (i1,j1,iblk)  ! near surface humidity, maybe lowest level (kg/kg)
           zlvl   (i,j,iblk) = dataPtr_zlvl   (i1,j1,iblk)  ! height of the lowest level (m) 
           flw    (i,j,iblk) = dataPtr_mdlwfx (i1,j1,iblk)  ! downwelling longwave flux
-          swvdr  (i,j,iblk) = dataPtr_swvr   (i1,j1,iblk)  ! downwelling shortwave flux, vis dir
-          swvdf  (i,j,iblk) = dataPtr_swvf   (i1,j1,iblk)  ! downwelling shortwave flux, vis dif
-          swidr  (i,j,iblk) = dataPtr_swir   (i1,j1,iblk)  ! downwelling shortwave flux, nir dir
-          swidf  (i,j,iblk) = dataPtr_swif   (i1,j1,iblk)  ! downwelling shortwave flux, nir dif
+          swvdr  (i,j,iblk) = max(c0, dataPtr_swvr(i1,j1,iblk)) ! downwelling shortwave flux, vis dir
+          swvdf  (i,j,iblk) = max(c0, dataPtr_swvf(i1,j1,iblk)) ! downwelling shortwave flux, vis dif
+          swidr  (i,j,iblk) = max(c0, dataPtr_swir(i1,j1,iblk)) ! downwelling shortwave flux, nir dir
+          swidf  (i,j,iblk) = max(c0, dataPtr_swif(i1,j1,iblk)) ! downwelling shortwave flux, nir dif
           fsw    (i,j,iblk) = swvdr(i,j,iblk)+swvdf(i,j,iblk)+swidr(i,j,iblk)+swidf(i,j,iblk)
           frain  (i,j,iblk) = dataPtr_lprec  (i1,j1,iblk)  ! flux of rain (liquid only)
           fsnow  (i,j,iblk) = dataPtr_fprec  (i1,j1,iblk)  ! flux of frozen precip

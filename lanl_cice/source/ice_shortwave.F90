@@ -290,68 +290,70 @@
       !$OMP PARALLEL DO PRIVATE(iblk,i,j,n,ilo,ihi,jlo,jhi,this_block, &
       !$OMP                     ij,icells,cszn,netsw,indxi,indxj)
       do iblk = 1, nblocks
-         this_block = get_block(blocks_ice(iblk),iblk)         
-         ilo = this_block%ilo
-         ihi = this_block%ihi
-         jlo = this_block%jlo
-         jhi = this_block%jhi
+        this_block = get_block(blocks_ice(iblk),iblk)         
+        ilo = this_block%ilo
+        ihi = this_block%ihi
+        jlo = this_block%jlo
+        jhi = this_block%jhi
 
-         do n = 1, ncat
+        do n = 1, ncat
 
-            icells = 0
-            do j = jlo, jhi
-            do i = ilo, ihi
-               if (aicen(i,j,n,iblk) > puny) then
-                  icells = icells + 1
-                  indxi(icells) = i
-                  indxj(icells) = j
-               endif
-            enddo               ! i
-            enddo               ! j
+          icells = 0
+          do j = jlo, jhi
+           do i = ilo, ihi
+              if (aicen(i,j,n,iblk) > puny) then
+                 icells = icells + 1
+                 indxi(icells) = i
+                 indxj(icells) = j
+              endif
+           enddo               ! i
+          enddo               ! j
 
-            do ij = 1, icells
-               i = indxi(ij)
-               j = indxj(ij)
+          do ij = 1, icells
+            i = indxi(ij)
+            j = indxj(ij)
 
-               alvdf(i,j,iblk) = alvdf(i,j,iblk) &
-                  + alvdfn(i,j,n,iblk)*aicen(i,j,n,iblk)
-               alidf(i,j,iblk) = alidf(i,j,iblk) &
-                  + alidfn(i,j,n,iblk)*aicen(i,j,n,iblk)
-               alvdr(i,j,iblk) = alvdr(i,j,iblk) &
-                  + alvdrn(i,j,n,iblk)*aicen(i,j,n,iblk)
-               alidr(i,j,iblk) = alidr(i,j,iblk) &
-                  + alidrn(i,j,n,iblk)*aicen(i,j,n,iblk)
+            if (aicen(i,j,n,iblk) > puny) then
+              alvdf(i,j,iblk) = alvdf(i,j,iblk) &
+                              + alvdfn(i,j,n,iblk)*aicen(i,j,n,iblk)
+              alidf(i,j,iblk) = alidf(i,j,iblk) &
+                              + alidfn(i,j,n,iblk)*aicen(i,j,n,iblk)
+              alvdr(i,j,iblk) = alvdr(i,j,iblk) &
+                              + alvdrn(i,j,n,iblk)*aicen(i,j,n,iblk)
+              alidr(i,j,iblk) = alidr(i,j,iblk) &
+                              + alidrn(i,j,n,iblk)*aicen(i,j,n,iblk)
 
-               netsw = swvdr(i,j,iblk)+swidr(i,j,iblk)+swvdf(i,j,iblk)+swidf(i,j,iblk)
-               if (netsw > puny) then ! sun above horizon
-               albice(i,j,iblk) = albice(i,j,iblk) &
-                  + albicen(i,j,n,iblk)*aicen(i,j,n,iblk)
-               albsno(i,j,iblk) = albsno(i,j,iblk) &
-                  + albsnon(i,j,n,iblk)*aicen(i,j,n,iblk)
-               albpnd(i,j,iblk) = albpnd(i,j,iblk) &
-                  + albpndn(i,j,n,iblk)*aicen(i,j,n,iblk)
-               endif
+              netsw = swvdr(i,j,iblk)+swidr(i,j,iblk)+swvdf(i,j,iblk)+swidf(i,j,iblk)
+              if (netsw > puny) then ! sun above horizon
+                albice(i,j,iblk) = albice(i,j,iblk) &
+                                 + albicen(i,j,n,iblk)*aicen(i,j,n,iblk)
+                albsno(i,j,iblk) = albsno(i,j,iblk) &
+                                 + albsnon(i,j,n,iblk)*aicen(i,j,n,iblk)
+                albpnd(i,j,iblk) = albpnd(i,j,iblk) &
+                                 + albpndn(i,j,n,iblk)*aicen(i,j,n,iblk)
+              endif
 
-               apeff_ai(i,j,iblk) = apeff_ai(i,j,iblk) &
-                  + apeffn(i,j,n,iblk)*aicen(i,j,n,iblk)
-               snowfrac(i,j,iblk) = snowfrac(i,j,iblk) &
-                  + snowfracn(i,j,n,iblk)*aicen(i,j,n,iblk)
-            enddo
+              apeff_ai(i,j,iblk) = apeff_ai(i,j,iblk) &
+                                 + apeffn(i,j,n,iblk)*aicen(i,j,n,iblk)
+              snowfrac(i,j,iblk) = snowfrac(i,j,iblk) &
+                                 + snowfracn(i,j,n,iblk)*aicen(i,j,n,iblk)
+            endif
+          enddo
 
-         enddo  ! ncat
+        enddo  ! ncat
 
       !----------------------------------------------------------------
       ! Store grid box mean albedos and fluxes before scaling by aice
       !----------------------------------------------------------------
 
-         do j = 1, ny_block
-         do i = 1, nx_block
+        do j = 1, ny_block
+          do i = 1, nx_block
             alvdf_ai  (i,j,iblk) = alvdf  (i,j,iblk)
             alidf_ai  (i,j,iblk) = alidf  (i,j,iblk)
             alvdr_ai  (i,j,iblk) = alvdr  (i,j,iblk)
             alidr_ai  (i,j,iblk) = alidr  (i,j,iblk)
-         enddo
-         enddo
+          enddo
+        enddo
 
       enddo     ! nblocks
       !$OMP END PARALLEL DO
@@ -1608,12 +1610,15 @@
          avdfl   , & ! visible, diffuse, albedo (fraction) 
          aidrl   , & ! near-ir, direct, albedo (fraction) 
          aidfl       ! near-ir, diffuse, albedo (fraction) 
-      real (kind=dbl_kind) :: tem
 
-      real (kind=dbl_kind) :: netsw
+      real (kind=dbl_kind) :: netsw, tem
 
 !-----------------------------------------------------------------------
 
+!     write(0,*)' minswidr=',minval(swidr(1:nx_block,1:ny_block)),&
+!               ' maxswidr=',maxval(swidr(1:nx_block,1:ny_block))
+!     write(0,*)' minswidf=',minval(swidf(1:nx_block,1:ny_block)),&
+!               ' maxswidf=',maxval(swidf(1:nx_block,1:ny_block))
       do j = 1, ny_block
       do i = 1, nx_block
          ! zero storage albedos and fluxes for accumulation over surface types:
@@ -1638,7 +1643,7 @@
       ! compute fraction of nir down direct to total over all points:
          tem = swidr(i,j) + swidf(i,j)
          if (tem > puny) then
-           fnidr(i,j) = max(c0, min(swidr(i,j)/tem, 1.0))
+           fnidr(i,j) = max(c0, min(swidr(i,j)/tem, c1))
          else
            fnidr(i,j) = c0
          endif
