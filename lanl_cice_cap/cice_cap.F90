@@ -971,13 +971,13 @@ module cice_cap_mod
 
     rhoa = c0
     potT = c0
+
     do iblk = 1,nblocks
       this_block = get_block(blocks_ice(iblk),iblk)
       ilo = this_block%ilo
       ihi = this_block%ihi
       jlo = this_block%jlo
       jhi = this_block%jhi
-
 
 !$omp parallel do private(i,j,i1,j1)
       do j = jlo,jhi
