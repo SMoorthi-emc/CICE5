@@ -2069,7 +2069,6 @@
    real (dbl_kind), dimension(:,:), allocatable :: &
      msg_buffer      ! buffer for sending blocks
 
-   integer :: ii, jj, sizex, sizey
 !-----------------------------------------------------------------------
 !
 !  initialize return array to zero
@@ -2091,10 +2090,6 @@
 
      allocate (msg_buffer(nx_block,ny_block))
 
-      sizex = size(ARRAY_G,dim=1)
-      sizey = size(ARRAY_G,dim=2)
-!     write(0,*)' sizex=',sizex,' sizey=',sizey
-
      do n=1,nblocks_tot
        if (dst_dist%blockLocation(n) > 0 .and. &
            dst_dist%blockLocation(n)-1 /= my_task) then
@@ -2104,21 +2099,11 @@
 
          ! interior
          do j = 1, ny_block
-           do i = 1, nx_block
-             ii = this_block%i_glob(i) + nghost
-             jj = this_block%j_glob(j) + nghost
-!     if (ii < 1 .or. ii > size(ARRAY_G,dim=1) .or.  jj < 1 .or. jj > size(ARRAY_G,dim=2)) then
-!       write(0,*)' i=',i,' j=',j,' my_task =', my_task,' nghost=',nghost,&
-!        ' thisi=',this_block%i_glob(i),' thisj=',this_block%j_glob(j), ' n=',n, &
-!        ' ii=',ii,' jj=',jj
-!     write(0,*)' size1=',size(ARRAY_G,dim=1),' size2=',size(ARRAY_G,dim=2)
-!     endif
-             if (ii > 0 .and. ii <= sizex .and. jj > 0 .and. jj <= sizey) then
-                msg_buffer(i,j) = ARRAY_G(this_block%i_glob(i)+nghost,&
-                                          this_block%j_glob(j)+nghost)
-             endif
-           enddo
-         enddo
+         do i = 1, nx_block
+            msg_buffer(i,j) = ARRAY_G(this_block%i_glob(i)+nghost,&
+                                      this_block%j_glob(j)+nghost)
+         end do
+         end do
 
          if (this_block%jblock == 1) then
             ! south edge
