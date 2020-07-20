@@ -10,7 +10,12 @@ CFLAGS     := -c -O2 -fp-model precise -xHost -g -traceback
 
 FIXEDFLAGS := -132
 FREEFLAGS  := -FR
-FFLAGS     := -O2 -fp-model precise -convert big_endian -assume byterecl -ftz -traceback -xHost -g
+FFLAGS_DEBUG := -g -O0 -fp-model precise -convert big_endian -assume byterecl -ftz -traceback -link_mpi=dbg -xHost
+FFLAGS_OPT   := -O2 -fp-model precise -convert big_endian -assume byterecl -ftz -traceback   -xHost
+
+#FFLAGS_DEBUG := -g -O0 -fp-model precise -convert big_endian -assume byterecl -ftz -traceback -link_mpi=dbg -xHost -I$(NETCDF)/include
+#FFLAGS_OPT   := -O2 -fp-model precise -convert big_endian -assume byterecl -ftz -traceback   -xHost -I$(NETCDF)/include
+#FFLAGS     := -O2 -fp-model precise -convert big_endian -assume byterecl -ftz -traceback -xHost -g
 #FFLAGS     := -O0 -fp-model precise -convert big_endian -assume byterecl -ftz -traceback -xHost -g -link_mpi=dbg
 FFLAGS_NOOPT:= -O0
 
@@ -18,6 +23,12 @@ ifeq ($(COMMDIR), mpi)
   FC         := mpiifort
 else
   FC         := ifort
+endif
+
+ifeq ($(DEBUG),Y)
+  FFLAGS += $(FFLAGS_DEBUG)
+else
+  FFLAGS += $(FFLAGS_OPT)
 endif
 
 MPICC:= mpiicc

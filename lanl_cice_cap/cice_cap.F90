@@ -183,7 +183,7 @@ module cice_cap_mod
      write(msgString,'(a12,i8)')'CICE lpet = ',lpet
      call ESMF_LogWrite(trim(msgString), ESMF_LOGMSG_INFO)
 
-    call ESMF_AttributeGet(gcomp, name="DumpFields_ICE", value=value, defaultValue="true", &
+    call ESMF_AttributeGet(gcomp, name="DumpFields", value=value, defaultValue="true", &
                            convention="NUOPC", purpose="Instance", rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
@@ -191,7 +191,7 @@ module cice_cap_mod
     write(msgString,'(A,l6)')'CICE_CAP: Dumpfields = ',write_diagnostics
     call ESMF_LogWrite(trim(msgString), ESMF_LOGMSG_INFO, rc=rc)
 
-    call ESMF_AttributeGet(gcomp, name="OverwriteSlice_ICE", value=value, defaultValue="true", &
+    call ESMF_AttributeGet(gcomp, name="OverwriteSlice", value=value, defaultValue="true", &
                            convention="NUOPC", purpose="Instance", rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
@@ -727,15 +727,11 @@ module cice_cap_mod
     real(ESMF_KIND_R8), pointer :: dataPtr_fprec(:,:,:)
     real(ESMF_KIND_R8), pointer :: dataPtr_sst(:,:,:)
     real(ESMF_KIND_R8), pointer :: dataPtr_sss(:,:,:)
-!   real(ESMF_KIND_R8), pointer :: dataPtr_sl(:,:,:)
     real(ESMF_KIND_R8), pointer :: dataPtr_sssz(:,:,:)
     real(ESMF_KIND_R8), pointer :: dataPtr_sssm(:,:,:)
     real(ESMF_KIND_R8), pointer :: dataPtr_ocncz(:,:,:)
     real(ESMF_KIND_R8), pointer :: dataPtr_ocncm(:,:,:)
     real(ESMF_KIND_R8), pointer :: dataPtr_fmpot(:,:,:)
-!   real(ESMF_KIND_R8), pointer :: dataPtr_mld(:,:,:)
-!   real(ESMF_KIND_R8), pointer :: dataPtr_mzmf(:,:,:)
-!   real(ESMF_KIND_R8), pointer :: dataPtr_mmmf(:,:,:)
     real(ESMF_KIND_R8), pointer :: dataPtr_rhoabot(:,:,:)
     real(ESMF_KIND_R8), pointer :: dataPtr_Tbot(:,:,:)
     real(ESMF_KIND_R8), pointer :: dataPtr_pbot(:,:,:)
@@ -931,9 +927,6 @@ module cice_cap_mod
     call State_getFldPtr(importState,'s_surf',dataPtr_sss,rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
 
-!   call State_getFldPtr(importState,'sea_lev',dataPtr_sl,rc=rc)
-!   if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
-
     call State_getFldPtr(importState,'sea_surface_slope_zonal',dataPtr_sssz,rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
 
@@ -948,15 +941,6 @@ module cice_cap_mod
 
     call State_getFldPtr(importState,'freezing_melting_potential',dataPtr_fmpot,rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
-
-!   call State_getFldPtr(importState,'mixed_layer_depth',dataPtr_mld,rc=rc)
-!   if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
-
-!   call State_getFldPtr(importState,'mean_zonal_moment_flx',dataPtr_mzmf,rc=rc)
-!   if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
-
-!   call State_getFldPtr(importState,'mean_merid_moment_flx',dataPtr_mmmf,rc=rc)
-!   if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
 
     call State_getFldPtr(importState,'inst_height_lowest',dataPtr_zlvl,rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
@@ -986,20 +970,26 @@ module cice_cap_mod
           ! i1=1:120,j1=1:540
           i1 = i - ilo + 1
 #ifdef CMEPS
-          if (dataPtr_Tbot(i1,j1) /= c0) rhoa(i,j,iblk) = dataPtr_pbot(i1,j1)/&
+!         rhoa   (i,j,iblk) = dataPtr_rhoabot(i1,j1)  ! import directly from mediator  
+          if (dataPtr_Tbot(i1,j1) > c0 .and. dataPtr_pbot(i1,j1) > c0)  then
+            rhoa (i,j,iblk) = dataPtr_pbot(i1,j1)/ &
              (287.058_ESMF_KIND_R8*(c1+0.608_ESMF_KIND_R8*dataPtr_qbot(i1,j1))*dataPtr_Tbot(i1,j1))
-          !rhoa   (i,j,iblk) = dataPtr_rhoabot(i1,j1)  ! import directly from mediator  
-          if(dataPtr_pbot(i1,j1) > c0) &
-          potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1) * (100000._ESMF_KIND_R8/dataPtr_pbot(i1,j1))**0.286_ESMF_KIND_R8 ! Potential temperature (K)
+            potT   (i,j,iblk) = dataPtr_Tbot   (i1,j1) * (100000._ESMF_KIND_R8/dataPtr_pbot(i1,j1))**0.286_ESMF_KIND_R8 ! Potential temperature (K)
+          else
+            potT (i,j,iblk) = 300.0
+            if (dataPtr_Tbot(i1,j1) > c0) potT(i,j,iblk) = dataPtr_Tbot(i1,j1)
+            rhoa (i,j,iblk) = c1
+          endif
           Tair   (i,j,iblk) = dataPtr_Tbot   (i1,j1)  ! near surface temp, maybe lowest level (K)
           Qa     (i,j,iblk) = dataPtr_qbot   (i1,j1)  ! near surface humidity, maybe lowest level (kg/kg)
           zlvl   (i,j,iblk) = dataPtr_zlvl   (i1,j1)  ! height of the lowest level (m) 
+          if (zlvl(i,j,iblk) <= c0) zlvl(i,j,iblk) = 10.0
           flw    (i,j,iblk) = dataPtr_mdlwfx (i1,j1)  ! downwelling longwave flux
           swvdr  (i,j,iblk) = dataPtr_swvr   (i1,j1)  ! downwelling shortwave flux, vis dir
           swvdf  (i,j,iblk) = dataPtr_swvf   (i1,j1)  ! downwelling shortwave flux, vis dif
           swidr  (i,j,iblk) = dataPtr_swir   (i1,j1)  ! downwelling shortwave flux, nir dir
           swidf  (i,j,iblk) = dataPtr_swif   (i1,j1)  ! downwelling shortwave flux, nir dif
-          fsw(i,j,iblk) = swvdr(i,j,iblk)+swvdf(i,j,iblk)+swidr(i,j,iblk)+swidf(i,j,iblk)
+          fsw    (i,j,iblk) = swvdr(i,j,iblk)+swvdf(i,j,iblk)+swidr(i,j,iblk)+swidf(i,j,iblk)
           frain  (i,j,iblk) = dataPtr_lprec  (i1,j1)  ! flux of rain (liquid only)
           fsnow  (i,j,iblk) = dataPtr_fprec  (i1,j1)  ! flux of frozen precip
           sss    (i,j,iblk) = dataPtr_sss    (i1,j1)  ! sea surface salinity (maybe for mushy layer)
@@ -1179,9 +1169,9 @@ module cice_cap_mod
     call State_getFldPtr(exportState,'mean_evap_rate_atm_into_ice',dataPtr_evap,rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
 
-    dataPtr_ifrac = 0._ESMF_KIND_R8
-    dataPtr_itemp = 0._ESMF_KIND_R8
-    dataPtr_mask  = 0._ESMF_KIND_R8
+    dataPtr_ifrac = c0
+    dataPtr_itemp = c0
+    dataPtr_mask  = c0
 
     do iblk = 1,nblocks
       this_block = get_block(blocks_ice(iblk),iblk)
@@ -1196,9 +1186,9 @@ module cice_cap_mod
         do i = ilo,ihi
           i1 = i - ilo + 1
 #ifdef CMEPS
-          if (hm(i,j,iblk) > 0.5) dataPtr_mask(i1,j1) = 1._ESMF_KIND_R8
+          if (hm(i,j,iblk) > 0.5) dataPtr_mask(i1,j1) = c1
           dataPtr_ifrac   (i1,j1) = aice(i,j,iblk)   ! ice fraction (0-1)
-          if (dataPtr_ifrac(i1,j1) > 0._ESMF_KIND_R8) &
+          if (dataPtr_ifrac(i1,j1) > c0) &
              dataPtr_itemp   (i1,j1) = Tffresh + trcr(i,j,1,iblk)  ! surface temperature of ice covered portion (degK)
           dataPtr_alvdr   (i1,j1) = alvdr(i,j,iblk)  ! albedo vis dir
           dataPtr_alidr   (i1,j1) = alidr(i,j,iblk)  ! albedo nir dir
@@ -1232,9 +1222,9 @@ module cice_cap_mod
           dataPtr_strocnyT(i1,j1) = ui*sina + vj*cosa  ! ice ocean stress
 
 #else
-          if (hm(i,j,iblk) > 0.5) dataPtr_mask(i1,j1,iblk) = 1._ESMF_KIND_R8
+          if (hm(i,j,iblk) > 0.5) dataPtr_mask(i1,j1,iblk) = c1
           dataPtr_ifrac   (i1,j1,iblk) = aice(i,j,iblk)   ! ice fraction (0-1)
-          if (dataPtr_ifrac(i1,j1,iblk) > 0._ESMF_KIND_R8) &
+          if (dataPtr_ifrac(i1,j1,iblk) > c0) &
               dataPtr_itemp  (i1,j1,iblk) = Tffresh + trcr(i,j,1,iblk)  ! surface temperature of ice covered portion (degK)
 !     if (lprnt .and. i == ipr .and. j == jpr) write(0,*) ' dataPtr_ifrac=',dataPtr_ifrac(i1,j1,iblk), &
 !    'dataPtr_itemp=',dataPtr_itemp  (i1,j1,iblk),' Tffresh=',Tffresh,' trcr=',trcr(i,j,1,iblk)
@@ -1339,7 +1329,8 @@ module cice_cap_mod
   endif  ! write_diagnostics 
 !
   write(info,*) trim(subname),' --- run phase 4 called --- ',rc
-  call ESMF_LogWrite(info, ESMF_LOGMSG_INFO, rc=dbrc)
+  call ESMF_LogWrite(trim(info), ESMF_LOGMSG_INFO, rc=dbrc)
+
 ! Dump out all the cice internal fields to cross-examine with those connected with mediator
 ! This will help to determine roughly which fields can be hooked into cice
 
@@ -1483,9 +1474,9 @@ module cice_cap_mod
     call State_getFldPtr(exportState,'mean_evap_rate_atm_into_ice',dataPtr_evap,rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) return
 
-    dataPtr_ifrac = 0._ESMF_KIND_R8
-    dataPtr_itemp = 0._ESMF_KIND_R8
-    dataPtr_mask = 0._ESMF_KIND_R8
+    dataPtr_ifrac = c0
+    dataPtr_itemp = c0
+    dataPtr_mask  = c0
     do iblk = 1,nblocks
        this_block = get_block(blocks_ice(iblk),iblk)
        ilo = this_block%ilo
@@ -1494,13 +1485,13 @@ module cice_cap_mod
        jhi = this_block%jhi
 
        do j = jlo,jhi
+          j1 = j - jlo + 1
        do i = ilo,ihi
           i1 = i - ilo + 1
-          j1 = j - jlo + 1
 #ifdef CMEPS
-          if (hm(i,j,iblk) > 0.5) dataPtr_mask(i1,j1) = 1._ESMF_KIND_R8
+          if (hm(i,j,iblk) > 0.5) dataPtr_mask(i1,j1) = c1
           dataPtr_ifrac   (i1,j1) = aice(i,j,iblk)   ! ice fraction (0-1)
-          if (dataPtr_ifrac(i1,j1) > 0._ESMF_KIND_R8) &
+          if (dataPtr_ifrac(i1,j1) > c0) &
              dataPtr_itemp   (i1,j1) = Tffresh + trcr(i,j,1,iblk)  ! surface temperature of ice covered portion (degK)
           dataPtr_alvdr   (i1,j1) = alvdr(i,j,iblk)  ! albedo vis dir
           dataPtr_alidr   (i1,j1) = alidr(i,j,iblk)  ! albedo nir dir
@@ -1530,9 +1521,9 @@ module cice_cap_mod
           dataPtr_strocnxT(i1,j1) = ui*cos(ANGLET(i,j,iblk)) - vj*sin(ANGLET(i,j,iblk))  ! ice ocean stress
           dataPtr_strocnyT(i1,j1) = ui*sin(ANGLET(i,j,iblk)) + vj*cos(ANGLET(i,j,iblk))  ! ice ocean stress
 #else
-          if (hm(i,j,iblk) > 0.5) dataPtr_mask(i1,j1,iblk) = 1._ESMF_KIND_R8
+          if (hm(i,j,iblk) > 0.5) dataPtr_mask(i1,j1,iblk) = c1
           dataPtr_ifrac   (i1,j1,iblk) = aice(i,j,iblk)   ! ice fraction (0-1)
-          if (dataPtr_ifrac(i1,j1,iblk) > 0._ESMF_KIND_R8) &
+          if (dataPtr_ifrac(i1,j1,iblk) > c0) &
              dataPtr_itemp   (i1,j1,iblk) = Tffresh + trcr(i,j,1,iblk)  ! surface temperature of ice covered portion (degK)
           dataPtr_alvdr   (i1,j1,iblk) = alvdr(i,j,iblk)  ! albedo vis dir
           dataPtr_alidr   (i1,j1,iblk) = alidr(i,j,iblk)  ! albedo nir dir
@@ -1824,7 +1815,7 @@ module cice_cap_mod
 
     if (present(rc)) rc = ESMF_SUCCESS
 
-    lvalue = 0._ESMF_KIND_R8
+    lvalue = c0
     if (present(value)) then
       lvalue = value
     endif
@@ -1966,68 +1957,17 @@ module cice_cap_mod
     call fld_list_add(fldsToIce_num, fldsToIce, "mean_fprec_rate"               , "will provide")
     call fld_list_add(fldsToIce_num, fldsToIce, "sea_surface_temperature"       , "will provide")
     call fld_list_add(fldsToIce_num, fldsToIce, "s_surf"                        , "will provide")
-!   call fld_list_add(fldsToIce_num, fldsToIce, "sea_lev"                       , "will provide")
     call fld_list_add(fldsToIce_num, fldsToIce, "sea_surface_slope_zonal"       , "will provide")
     call fld_list_add(fldsToIce_num, fldsToIce, "sea_surface_slope_merid"       , "will provide")
     call fld_list_add(fldsToIce_num, fldsToIce, "ocn_current_zonal"             , "will provide")
     call fld_list_add(fldsToIce_num, fldsToIce, "ocn_current_merid"             , "will provide")
     call fld_list_add(fldsToIce_num, fldsToIce, "freezing_melting_potential"    , "will provide")
-!   call fld_list_add(fldsToIce_num, fldsToIce, "mixed_layer_depth"             , "will provide")
-!   call fld_list_add(fldsToIce_num, fldsToIce, "mean_zonal_moment_flx"         , "will provide")
-!   call fld_list_add(fldsToIce_num, fldsToIce, "mean_merid_moment_flx"         , "will provide")
-!   call fld_list_add(fldsToIce_num, fldsToIce, "inst_surface_height"           , "will provide")
-!   call fld_list_add(fldsToIce_num, fldsToIce, "inst_temp_height2m"            , "will provide")
-!   call fld_list_add(fldsToIce_num, fldsToIce, "inst_spec_humid_height2m"      , "will provide")
     call fld_list_add(fldsToIce_num, fldsToIce, "air_density_height_lowest"     , "will provide")
 ! this field is not used; however something about it being the 2nd field listed  as 'toice' in
 ! nems mediator requires it to be present
     call fld_list_add(fldsToIce_num, fldsToIce, "inst_temp_height2m"            , "will provide")
 
-!   call fld_list_add(fldsToIce_num, fldsToIce, "inst_zonal_wind_height10m"     , "will provide", strax)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "inst_merid_wind_height10m"     , "will provide", stray)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "inst_pres_height_surface"      , "will provide", zlvl)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "xx_pot_air_temp"               , "will provide", potT)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "inst_temp_height2m"            , "will provide", Tair)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "inst_spec_humid_height2m"      , "will provide", Qa)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "xx_inst_air_density"           , "will provide", rhoa)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "mean_down_sw_vis_dir_flx"      , "will provide", swvdr)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "mean_down_sw_vis_dif_flx"      , "will provide", swvdf)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "mean_down_sw_ir_dir_flx"       , "will provide", swidr)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "mean_down_sw_ir_dif_flx"       , "will provide", swidf)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "mean_down_lw_flx"              , "will provide", flw)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "mean_prec_rate"                , "will provide", frain)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "xx_mean_fprec_rate"            , "will provide", frain)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "xx_faero_atm"                  , "will provide", faero_atm)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "ocn_current_zonal"             , "will provide", uocn)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "ocn_current_merid"             , "will provide", vocn)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "sea_surface_slope_zonal"       , "will provide", ss_tltx)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "sea_surface_slope_merid"       , "will provide", ss_tlty)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "s_surf"                        , "will provide", sss)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "sea_surface_temperature"       , "will provide", sst)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "freezing_melting_potential"    , "will provide", frzmlt)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "xx_inst_frz_mlt_potential"     , "will provide", frzmlt_init)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "freezing_temp"                 , "will provide", Tf)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "mean_deep_ocean_down_heat_flx" , "will provide", qdp)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "mixed_layer_depth"             , "will provide", hmix)
-!   call fld_list_add(fldsToIce_num, fldsToIce, "xx_daice_da"                   , "will provide", daice_da)
-
 !--------- export fields from Sea Ice -------------
-
-!tcxcall fld_list_add(fldsFrIce_num, fldsFrIce, "sea_ice_temperature"             , "will provide", icetemp_cpl)
-!tcxcall fld_list_add(fldsFrIce_num, fldsFrIce, "inst_ice_vis_dir_albedo"         , "will provide", alvdr)
-!tcxcall fld_list_add(fldsFrIce_num, fldsFrIce, "inst_ice_ir_dir_albedo"          , "will provide", alidr)
-!tcxcall fld_list_add(fldsFrIce_num, fldsFrIce, "inst_ice_vis_dif_albedo"         , "will provide", alvdf)
-!tcxcall fld_list_add(fldsFrIce_num, fldsFrIce, "inst_ice_ir_dif_albedo"          , "will provide", alidf)
-!tcxcall fld_list_add(fldsFrIce_num, fldsFrIce, "ice_fraction"                    , "will provide", aice_cpl)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "stress_on_air_ice_zonal"         , "will provide", strairxT)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "stress_on_air_ice_merid"         , "will provide", strairyT)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "stress_on_ocn_ice_zonal"         , "will provide", strocnxT)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "stress_on_ocn_ice_merid"         , "will provide", strocnyT)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "mean_sw_pen_to_ocn"              , "will provide", fswthru)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "mean_up_lw_flx_ice"              , "will provide", flwout)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "mean_sensi_heat_flx_atm_into_ice", "will provide", fsens)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "mean_laten_heat_flx_atm_into_ice", "will provide", flat)
-!tcxcall fld_list_add(fldsFrIce_num, fldsFrIce, "mean_evap_rate_atm_into_ice"     , "will provide", evap)
 
     call fld_list_add(fldsFrIce_num, fldsFrIce, "sea_ice_surface_temperature"     , "will provide")
     call fld_list_add(fldsFrIce_num, fldsFrIce, "inst_ice_vis_dir_albedo"         , "will provide")
@@ -2054,32 +1994,6 @@ module cice_cap_mod
     call fld_list_add(fldsFrIce_num, fldsFrIce, "net_heat_flx_to_ocn"             , "will provide")
     call fld_list_add(fldsFrIce_num, fldsFrIce, "mean_ice_volume"                 , "will provide")
     call fld_list_add(fldsFrIce_num, fldsFrIce, "mean_snow_volume"                , "will provide")
-
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_inst_temp_height2m", "will provide", Tref)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_inst_spec_humid_height2m", "will provide", Qref)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_mean_albedo_vis_dir", "will provide", alvdr_ai)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_mean_albedo_nir_dir", "will provide", alidr_ai)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_mean_albedo_vis_dif", "will provide", alvdf_ai)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_mean_albedo_nir_dif", "will provide", alidf_ai)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_bare_ice_albedo", "will provide", albice)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_snow_albedo", "will provide", albsno)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_melt_pond_albedo", "will provide", albpnd)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_apeff_ai", "will provide", apeff_ai)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_mean_fresh_water_flx_to_ponds", "will provide", fpond)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_faero_ocn", "will provide", faero_ocn)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_strairx_ocn", "will provide", strairx_ocn)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_strairy_ocn", "will provide", strairy_ocn)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_mean_sensi_heat_flx", "will provide", fsens_ocn)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_mean_laten_heat_flx", "will provide", flat_ocn)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_flwout_ocn", "will provide", flwout_ocn)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_evap_ocn", "will provide", evap_ocn)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_albedo_vis_dir", "will provide", alvdr_ocn)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_albedo_nir_dir", "will provide", alidr_ocn)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_albedo_vis_dif", "will provide", alvdf_ocn)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_albedo_nir_dif", "will provide", alidf_ocn)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_2m_atm_ref_temperature", "will provide", Tref_ocn)
-!   call fld_list_add(fldsFrIce_num, fldsFrIce, "xx_2m_atm_ref_spec_humidity", "will provide", Qref_ocn)
-
 
   end subroutine CICE_FieldsSetup
 

@@ -101,7 +101,11 @@ if ($RES == 'mx025') then   # for column configuration:
    setenv NTASK     48       # total number of processors
    setenv BLCKX     60       # x-dimension of blocks ( not including )
 
+#  setenv NTASK     72       # total number of processors
+#  setenv BLCKX     40       # x-dimension of blocks ( not including )
+
    setenv BLCKY    540       # y-dimension of blocks (  ghost cells  )
+
    setenv NICELYR    7       # number of vertical layers in the ice
    setenv NSNWLYR    1       # number of vertical layers in the snow
    setenv NICECAT    5       # number of ice thickness categories
